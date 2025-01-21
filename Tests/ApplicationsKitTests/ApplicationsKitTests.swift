@@ -10,27 +10,36 @@ final class ApplicationsKitTests: XCTestCase {
         // https://developer.apple.com/documentation/xctest/defining_test_cases_and_test_methods
     }
 
-    func testFetchApplications() throws {
-        let appURLs = ApplicationsKit.applicationURLs(at: "/Applications")
-        let apps = ApplicationsKit.applications(of: appURLs)
+    func testFetchSystemApplications() throws {
+        let apps = ApplicationsKit.systemApplications()
         print(apps)
     }
 
-    func testAppIcon() throws {
-        let appURLs = ApplicationsKit.applicationURLs(at: "/Applications")
-        let app = ApplicationsKit.applications(of: appURLs).first { $0.appName == "ChatGPT" }
-        if let appIcon = app?.appIcon() {
-            debugPrint("---")
-        }
+    func testFetchUserApplications() throws {
+        let apps = ApplicationsKit.userApplications()
+        print(apps)
     }
-    
+
     func testUserApplications() {
         let userApps = ApplicationsKit.userApplications()
         debugPrint(userApps)
     }
 
-    func testApplicationDirectory() {
-        let applicationDirectory = URL.applicationDirectory
-        debugPrint(applicationDirectory)
+    func testSystemApplicationDirectory() {
+        let systemApplicationsDirectory = ApplicationsKit.systemApplicationsDirectory
+        debugPrint(systemApplicationsDirectory)
+    }
+
+    func testUserApplicationDirectory() {
+        let userApplicationsDirectory = ApplicationsKit.userApplicationsDirectory
+        debugPrint(userApplicationsDirectory)
+    }
+
+    func testAppIcon() throws {
+//        let appURLs = ApplicationsKit.applicationURLs(at: "/Applications")
+//        let app = ApplicationsKit.applications(of: appURLs).first { $0.appName == "ChatGPT" }
+//        if let appIcon = app?.appIcon() {
+//            debugPrint("---")
+//        }
     }
 }

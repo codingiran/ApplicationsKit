@@ -12,36 +12,54 @@ import Foundation
 #error("ApplicationsKit doesn't support Swift versions below 5.9.0")
 #endif
 
-/// Current ApplicationsKit version 0.0.. Necessary since SPM doesn't use dynamic libraries. Plus this will be more accurate.
-public let version = "0.0.1"
-
-public enum ApplicationsKit {}
+/// The `ApplicationsKit` provides a set of static methods for working with applications on macOS.
+public enum ApplicationsKit {
+    /// Current ApplicationsKit version 0.0.1. Necessary since SPM doesn't use dynamic libraries. Plus this will be more accurate.
+    public static let version = "0.0.1"
+}
 
 public extension ApplicationsKit {
+    /// The system applications directory.
     static var systemApplicationsDirectory: URL {
-        if #available(macOS 13.0, *) {
-            return URL.applicationDirectory
-        } else {
-            return URL(fileURLWithPath: "/Applications")
+        do {
+            return try FileManager.default.url(for: .applicationDirectory, in: .localDomainMask, appropriateFor: nil, create: false)
+        } catch {
+            if #available(macOS 13.0, macCatalyst 16.0, *) {
+                return URL.applicationDirectory
+            } else {
+                return URL(fileURLWithPath: "/Applications")
+            }
         }
     }
 
+    /// The user applications directory.
     static var userApplicationsDirectory: URL {
-        if #available(macOS 13.0, *) {
-            return URL.homeDirectory.appending(path: "Applications")
-        } else {
-            return URL(fileURLWithPath: "\(NSHomeDirectory())/Applications")
+        do {
+            return try FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        } catch {
+            if #available(macOS 13.0, macCatalyst 16.0, *) {
+                return URL.homeDirectory.appending(path: "Applications")
+            } else {
+                return URL(fileURLWithPath: "\(NSHomeDirectory())/Applications")
+            }
         }
     }
 
+    /// The system applications.
     static func systemApplications() -> [Application] {
         return applications(at: systemApplicationsDirectory)
     }
 
+    /// The user applications.
     static func userApplications() -> [Application] {
         return applications(at: userApplicationsDirectory)
     }
 
+    /// The applications at the specified directory.
+    ///
+    /// - Parameters:
+    ///   - directory: The directory to search for applications.
+    /// - Returns: The applications at the specified directory.
     static func applications(at directory: URL) -> [Application] {
         guard let appURLs = applicationURLs(at: directory) else {
             return []
@@ -49,10 +67,16 @@ public extension ApplicationsKit {
         return applications(of: appURLs)
     }
 
+    /// The applications of the specified URLs.
+    ///
+    /// - Parameters:
+    ///   - appURLs: The URLs of the applications.
+    /// - Returns: The applications of the specified URLs.
     static func applications(of appURLs: [URL]) -> [Application] {
         guard !appURLs.isEmpty else {
             return []
         }
+#if os(macOS)
         let combinedPaths = appURLs.map { $0.path }
         guard let metadataDictionary = try? MDLSUtils.getMDLSMetadataAsPlist(for: combinedPaths) else {
             return []
@@ -60,16 +84,25 @@ public extension ApplicationsKit {
         let apps: [Application] = appURLs.compactMap {
             let appPath = $0.path
             if let appMetadata = metadataDictionary[appPath] {
-                // Use `MetadataAppInfoFetcher` first
-                return try? MetadataAppInfoFetcher.getAppInfo(fromMetadata: appMetadata, at: $0)
+                // Fetch from Metadata
+                return try? Application.getAppInfo(fromMetadata: appMetadata, at: $0)
             } else {
-                return try? AppInfoFetcher.getAppInfo(at: $0)
-                // Fallback to the regular AppInfoFetcher for this app
+                // Fallback to fetch from App Bundle
+                return try? Application.getAppInfo(at: $0)
             }
         }
         return apps
+#else
+        // macCatalyst does not support MDLS, fallback to fetch from App Bundle
+        return appURLs.compactMap { try? Application.getAppInfo(at: $0) }
+#endif
     }
 
+    /// The application URLs at the specified directory.
+    ///
+    /// - Parameters:
+    ///   - directory: The directory to search for applications.
+    /// - Returns: The application URLs at the specified directory.
     static func applicationURLs(at directory: URL) -> [URL]? {
         let fileManager = FileManager.default
         guard fileManager.fileExists(at: directory) else {

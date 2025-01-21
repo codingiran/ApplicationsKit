@@ -20,7 +20,7 @@ extension String {
 
 extension URL {
     var filePath: String {
-        if #available(macOS 13.0, *) {
+        if #available(macOS 13.0, macCatalyst 16.0, *) {
             path(percentEncoded: true)
         } else {
             path
@@ -88,6 +88,9 @@ extension FileManager {
     }
 }
 
+#if os(macOS)
+
+@available(macOS 10.15, *)
 extension NSImage {
     func convertICNSToPNG(size: NSSize) -> NSImage? {
         // Resize the icon to the specified size
@@ -107,3 +110,5 @@ extension NSImage {
         return nil
     }
 }
+
+#endif

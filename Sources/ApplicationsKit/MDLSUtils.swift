@@ -7,6 +7,9 @@
 
 import Foundation
 
+#if os(macOS)
+
+@available(macOS 10.15, *)
 enum MDLSParseError: LocalizedError {
     case parseFailed(String)
 
@@ -18,21 +21,25 @@ enum MDLSParseError: LocalizedError {
     }
 }
 
+@available(macOS 10.15, *)
+typealias MDLSMetadata = [String: Any]
+
+@available(macOS 10.15, *)
 enum MDLSUtils {
     /// Executes `mdls` with `-plist -` and `-nullMarker ""` options and returns metadata in a structured dictionary.
-    static func getMDLSMetadataAsPlist(for path: String) throws -> [String: [String: Any]]? {
+    static func getMDLSMetadataAsPlist(for path: String) throws -> [String: MDLSMetadata]? {
         guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else { return nil }
         return try parseMDLSMetadataAsPlist(for: [path])
     }
 
     /// Executes `mdls` with `-plist -` and `-nullMarker ""` options and returns metadata in a structured dictionary.
-    static func getMDLSMetadataAsPlist(for paths: [String]) throws -> [String: [String: Any]]? {
+    static func getMDLSMetadataAsPlist(for paths: [String]) throws -> [String: MDLSMetadata]? {
         let paths = paths.filter { !$0.isEmpty && FileManager.default.fileExists(atPath: $0) }
         return try parseMDLSMetadataAsPlist(for: paths)
     }
 
     /// Executes `mdls` with `-plist -` and `-nullMarker ""` options and returns metadata in a structured dictionary.
-    static func parseMDLSMetadataAsPlist(for paths: [String]) throws -> [String: [String: Any]]? {
+    static func parseMDLSMetadataAsPlist(for paths: [String]) throws -> [String: MDLSMetadata]? {
         // Use Pipe to capture the output
         let pipe = Pipe()
         let errorPipe = Pipe()
@@ -51,11 +58,11 @@ enum MDLSUtils {
                 throw MDLSParseError.parseFailed("No output captured from mdls")
             }
             // Attempt to parse the plist output into a Swift array of dictionaries
-            var plistArray = [[String: Any]]()
+            var plistArray = [MDLSMetadata]()
             let properties = try PropertyListSerialization.propertyList(from: data, format: nil)
-            if let dictionary = properties as? [String: Any] {
+            if let dictionary = properties as? MDLSMetadata {
                 plistArray.append(dictionary)
-            } else if let array = properties as? [[String: Any]] {
+            } else if let array = properties as? [MDLSMetadata] {
                 plistArray.append(contentsOf: array)
             } else {
                 throw MDLSParseError.parseFailed("Failed to parse plist output into expected format")
@@ -113,3 +120,5 @@ enum MDLSUtils {
         "kMDItemPhysicalSize"
     ]
 }
+
+#endif
