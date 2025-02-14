@@ -10,7 +10,7 @@ import Foundation
 #if os(macOS)
 
 @available(macOS 10.15, *)
-enum MDLSParseError: LocalizedError {
+enum MDLSParseError: LocalizedError, Sendable {
     case parseFailed(String)
 
     var errorDescription: String? {
@@ -25,7 +25,7 @@ enum MDLSParseError: LocalizedError {
 typealias MDLSMetadata = [String: Any]
 
 @available(macOS 10.15, *)
-enum MDLSUtils {
+enum MDLSUtils: Sendable {
     /// Executes `mdls` with `-plist -` and `-nullMarker ""` options and returns metadata in a structured dictionary.
     static func getMDLSMetadataAsPlist(for path: String) throws -> [String: MDLSMetadata]? {
         guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else { return nil }

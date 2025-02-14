@@ -11,7 +11,7 @@ import Foundation
 // MARK: - Fetch Error
 
 extension Application {
-    enum FetcherError: LocalizedError {
+    enum FetcherError: LocalizedError, Sendable {
         case noAppFilesFound(URL)
         case appContentsReadingFailed(Error, URL)
         case appBundleNotFound(URL)

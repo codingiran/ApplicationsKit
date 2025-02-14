@@ -9,7 +9,7 @@ import AppKit
 import Foundation
 
 /// A struct that represents an application.
-public struct Application: Codable, Identifiable, Equatable, Hashable {
+public struct Application: Codable, Identifiable, Equatable, Hashable, Sendable {
     /// The unique identifier for the application.
     public var id = UUID().uuidString
     /// The path to the application.
@@ -54,7 +54,7 @@ public extension Application {
 
 public extension Application {
     /// The architecture of the application.
-    enum Arch: Codable {
+    enum Arch: Codable, Sendable {
         /// The architecture is ARM.
         case arm
         /// The architecture is Intel.
