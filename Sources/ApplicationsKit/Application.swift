@@ -24,8 +24,8 @@ public struct Application: Codable, Identifiable, Equatable, Hashable, Sendable 
     public let isWebApp: Bool
     /// Whether the application is wrapped.
     public let isWrapped: Bool
-    /// Whether the application is a system app.
-    public let isSystem: Bool
+    /// Whether the application is a global installed app.
+    public let isGlobal: Bool
     /// Whether the application is from metadata.
     public let isFromMetadata: Bool
     /// The architecture of the application.

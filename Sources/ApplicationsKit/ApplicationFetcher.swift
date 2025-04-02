@@ -68,7 +68,7 @@ extension Application {
         // Use similar helper functions as `AppInfoFetcher` for attributes not found in metadata
         let isWrapped = isDirectoryWrapped(path: url)
         let isWebApp = isWebApp(appPath: url)
-        let isSystem = !url.path.contains(NSHomeDirectory())
+        let isGlobal = !url.path.contains(NSHomeDirectory())
 
         return Application(path: url,
                            bundleIdentifier: bundleIdentifier,
@@ -76,7 +76,7 @@ extension Application {
                            appVersion: version,
                            isWebApp: isWebApp,
                            isWrapped: isWrapped,
-                           isSystem: isSystem,
+                           isGlobal: isGlobal,
                            isFromMetadata: true,
                            arch: arch,
                            bundleSize: logicalSize,
@@ -155,7 +155,7 @@ extension Application {
             : bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
 
         let isWebApp = isWebApp(bundle: bundle)
-        let isSystem = !url.path.contains(NSHomeDirectory())
+        let isGlobal = !url.path.contains(NSHomeDirectory())
 
         return Application(path: url,
                            bundleIdentifier: bundleIdentifier,
@@ -163,7 +163,7 @@ extension Application {
                            appVersion: appVersion,
                            isWebApp: isWebApp,
                            isWrapped: wrapped,
-                           isSystem: isSystem,
+                           isGlobal: isGlobal,
                            isFromMetadata: false,
                            arch: .empty,
                            bundleSize: 0,

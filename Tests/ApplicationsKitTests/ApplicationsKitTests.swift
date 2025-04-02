@@ -42,4 +42,10 @@ final class ApplicationsKitTests: XCTestCase {
 //            debugPrint("---")
 //        }
     }
+    
+    func testRiskyApp() async {
+        let apps = ApplicationsKit.systemApplications()
+        let riskyApps = apps.filter { $0.isRisky }
+        debugPrint(riskyApps)
+    }
 }

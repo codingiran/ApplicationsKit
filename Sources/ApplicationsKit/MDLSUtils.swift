@@ -22,7 +22,7 @@ enum MDLSParseError: LocalizedError, Sendable {
 }
 
 @available(macOS 10.15, *)
-typealias MDLSMetadata = [String: Any]
+typealias MDLSMetadata = [String: any Any & Sendable]
 
 @available(macOS 10.15, *)
 enum MDLSUtils: Sendable {
