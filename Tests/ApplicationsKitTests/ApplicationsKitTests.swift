@@ -35,14 +35,14 @@ final class ApplicationsKitTests: XCTestCase {
         debugPrint(userApplicationsDirectory)
     }
 
-    func testAppIcon() throws {
-//        let appURLs = ApplicationsKit.applicationURLs(at: "/Applications")
-//        let app = ApplicationsKit.applications(of: appURLs).first { $0.appName == "ChatGPT" }
-//        if let appIcon = app?.appIcon() {
-//            debugPrint("---")
-//        }
+    func testAppIcon() async throws {
+        guard let app = ApplicationsKit.systemApplications().first(where: { $0.appName == "ChatGPT" }) else {
+            return
+        }
+        let icon = await ApplicationIcon.shared.icon(for: app, preferedSize: .init(width: 160, height: 160))
+        debugPrint(icon?.size)
     }
-    
+
     func testRiskyApp() async {
         let apps = ApplicationsKit.systemApplications()
         for app in apps {
