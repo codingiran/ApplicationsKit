@@ -5,7 +5,6 @@
 //  Created by CodingIran on 2025/1/20.
 //
 
-import AppKit
 import Foundation
 
 extension String {
@@ -19,9 +18,17 @@ extension String {
 }
 
 extension URL {
+    init(fileURLPath path: String) {
+        if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+            self.init(filePath: path)
+        } else {
+            self.init(fileURLWithPath: path)
+        }
+    }
+
     var filePath: String {
         if #available(macOS 13.0, macCatalyst 16.0, *) {
-            path(percentEncoded: true)
+            path(percentEncoded: false)
         } else {
             path
         }
@@ -53,6 +60,14 @@ extension URL {
             return false
         }
     }
+
+    func appendingPath(_ path: String) -> URL {
+        if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+            return self.appending(path: path)
+        } else {
+            return appendingPathComponent(path)
+        }
+    }
 }
 
 extension Bundle {
@@ -80,34 +95,69 @@ extension Bundle {
 
 extension FileManager {
     func fileExists(at url: URL) -> Bool {
-        fileExists(atPath: url.path)
+        fileExists(atPath: url.filePath)
     }
 
     func fileExists(at url: URL, isDirectory: UnsafeMutablePointer<ObjCBool>?) -> Bool {
-        fileExists(atPath: url.path, isDirectory: isDirectory)
+        fileExists(atPath: url.filePath, isDirectory: isDirectory)
+    }
+}
+
+extension Array {
+    subscript(safeIndex index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 
 #if os(macOS)
 
+#if canImport(AppKit)
+
+import AppKit
+
 @available(macOS 10.15, *)
 extension NSImage {
-    func convertICNSToPNG(size: NSSize) -> NSImage? {
+    func convertICNSToPNGData(size: NSSize? = nil) -> Data? {
         // Resize the icon to the specified size
-        let resizedIcon = NSImage(size: size)
-        resizedIcon.lockFocus()
-        draw(in: NSRect(x: 0, y: 0, width: size.width, height: size.height))
-        resizedIcon.unlockFocus()
+        let resizedIcon: NSImage = {
+            guard let size else {
+                return self
+            }
+            let resizedIcon = NSImage(size: size)
+            resizedIcon.lockFocus()
+            draw(in: NSRect(x: 0, y: 0, width: size.width, height: size.height))
+            resizedIcon.unlockFocus()
+            return resizedIcon
+        }()
 
         // Convert the resized icon to PNG format
-        if let resizedImageData = resizedIcon.tiffRepresentation,
-           let resizedBitmap = NSBitmapImageRep(data: resizedImageData),
-           let pngData = resizedBitmap.representation(using: .png, properties: [:])
-        {
-            return NSImage(data: pngData)
+        guard let resizedImageData = resizedIcon.tiffRepresentation,
+              let resizedBitmap = NSBitmapImageRep(data: resizedImageData),
+              let pngData = resizedBitmap.representation(using: .png, properties: [:])
+        else {
+            return nil
         }
 
-        return nil
+        return pngData
+    }
+
+    func convertICNSToPNGImage(size: NSSize? = nil) -> NSImage? {
+        guard let pngData = convertICNSToPNGData() else {
+            return nil
+        }
+        return NSImage(data: pngData)
+    }
+}
+
+extension NSImage: @retroactive @unchecked Sendable {}
+
+#endif
+
+extension Foundation.Process {
+    convenience init(launchPath: String, arguments: [String]?) {
+        self.init()
+        self.executableURL = URL(fileURLPath: launchPath)
+        self.arguments = arguments
     }
 }
 

@@ -31,5 +31,6 @@ let package = Package(
             name: "ApplicationsKitTests",
             dependencies: ["ApplicationsKit"]
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

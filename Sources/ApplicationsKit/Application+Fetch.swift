@@ -1,11 +1,10 @@
 //
-//  ApplicationFetcher.swift
+//  Application+Fetch.swift
 //  ApplicationsKit
 //
 //  Created by CodingIran on 2025/1/20.
 //
 
-import AppKit
 import Foundation
 
 // MARK: - Fetch Error
@@ -68,7 +67,7 @@ extension Application {
         // Use similar helper functions as `AppInfoFetcher` for attributes not found in metadata
         let isWrapped = isDirectoryWrapped(path: url)
         let isWebApp = isWebApp(appPath: url)
-        let isGlobal = !url.path.contains(NSHomeDirectory())
+        let isGlobal = !url.filePath.contains(NSHomeDirectory())
 
         return Application(path: url,
                            bundleIdentifier: bundleIdentifier,
@@ -122,18 +121,18 @@ extension Application {
     }
 
     static func isDirectoryWrapped(path: URL) -> Bool {
-        let wrapperURL = path.appendingPathComponent("Wrapper")
-        return FileManager.default.fileExists(atPath: wrapperURL.path)
+        let wrapperURL = path.appendingPath("Wrapper")
+        return FileManager.default.fileExists(at: wrapperURL)
     }
 
     static func handleWrappedDirectory(at url: URL) throws -> Application {
-        let wrapperURL = url.appendingPathComponent("Wrapper")
+        let wrapperURL = url.appendingPath("Wrapper")
         do {
             let contents = try FileManager.default.contentsOfDirectory(at: wrapperURL, includingPropertiesForKeys: nil)
             guard let firstAppFile = contents.first(where: { $0.pathExtension == "app" }) else {
                 throw Application.FetcherError.noAppFilesFound(wrapperURL)
             }
-            let fullPath = wrapperURL.appendingPathComponent(firstAppFile.lastPathComponent)
+            let fullPath = wrapperURL.appendingPath(firstAppFile.lastPathComponent)
             return try getAppInfo(at: fullPath, wrapped: true)
         } catch {
             throw Application.FetcherError.appContentsReadingFailed(error, wrapperURL)
@@ -155,7 +154,7 @@ extension Application {
             : bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
 
         let isWebApp = isWebApp(bundle: bundle)
-        let isGlobal = !url.path.contains(NSHomeDirectory())
+        let isGlobal = !url.filePath.contains(NSHomeDirectory())
 
         return Application(path: url,
                            bundleIdentifier: bundleIdentifier,
@@ -186,21 +185,4 @@ extension Application {
         return (infoDict["LSTemplateApplication"] as? Bool ?? false) ||
             (infoDict["CFBundleExecutable"] as? String == "app_mode_loader")
     }
-
-    /// Fetch App Icon URL
-    static func fetchAppIconPath(for url: URL, wrapped: Bool, metaData: Bool) -> URL {
-        let iconURL = wrapped ? (metaData ? url : url.deletingLastPathComponent().deletingLastPathComponent()) : url
-        return iconURL
-    }
-
-#if os(macOS)
-
-    /// Fetch App Icon Image
-    @available(macOS 10.15, *)
-    static func fetchAppIcon(for url: URL, wrapped: Bool, metaData: Bool, preferedSize: NSSize = .init(width: 50, height: 50)) -> NSImage? {
-        let path = fetchAppIconPath(for: url, wrapped: wrapped, metaData: metaData)
-        return NSWorkspace.shared.icon(forFile: path.path).convertICNSToPNG(size: preferedSize)
-    }
-
-#endif
 }

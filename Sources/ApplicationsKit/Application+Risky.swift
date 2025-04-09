@@ -12,21 +12,55 @@ import Foundation
 // MARK: - Risky Detection
 
 public extension Application {
+    enum RiskyReason: LocalizedError, Sendable {
+        case codesignCheckFailed(Error? = nil)
+        case emptyAuthority
+        case dangerousAuthority(flag: String)
+        case emptyTeamID
+
+        public var errorDescription: String? {
+            switch self {
+            case .codesignCheckFailed(let error):
+                if let error {
+                    return "Codesign Check Failed for \(error.localizedDescription)"
+                } else {
+                    return "Codesign Check Failed"
+                }
+            case .emptyAuthority:
+                return "Empty Authority"
+            case .dangerousAuthority(let flag):
+                return "Dangerous Authority of \(flag)"
+            case .emptyTeamID:
+                return "Empty Team ID"
+            }
+        }
+    }
+}
+
+public extension Application {
     var isCodeSignedValid: Bool {
-        Self.checkCodeSign(at: path)
+        let result = checkCodeSign()
+        switch result {
+        case .success:
+            return true
+        case .failure:
+            return false
+        }
     }
 
-    var isRisky: Bool {
-        return !isCodeSignedValid
+    var isRisky: Bool { !isCodeSignedValid }
+
+    func checkCodeSign() -> Result<Void, RiskyReason> {
+        Self.checkCodeSign(at: path)
     }
 }
 
 // MARK: - Check CodeSign
 
 fileprivate extension Application {
-    static func checkCodeSign(at url: URL) -> Bool {
+    static func checkCodeSign(at url: URL) -> Result<Void, RiskyReason> {
         let pipe = Pipe()
-        let task = codeSignTask(for: url.path, pipe: pipe)
+        let task = codeSignTask(for: url.filePath, pipe: pipe)
         do {
             try task.run()
             task.waitUntilExit()
@@ -35,7 +69,7 @@ fileprivate extension Application {
             guard task.terminationStatus == 0,
                   let output, !output.isEmpty
             else {
-                return false
+                return .failure(.codesignCheckFailed())
             }
             /*
              Executable=/Applications/Visual Studio Code.app/Contents/MacOS/Electron
@@ -62,29 +96,36 @@ fileprivate extension Application {
              Internal requirements count=1 size=180
              */
             let components = output.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            let authorities = components.filter { $0.hasPrefix("Authority=") }.map { $0.dropFirst(10) }
-            if authorities.isEmpty {
+
+            let authorityPrefix = "Authority="
+            let authorities = components.filter { $0.hasPrefix(authorityPrefix) }.map { $0.dropFirst(authorityPrefix.count) }
+            guard !authorities.isEmpty else {
                 // No authority
-                return false
+                return .failure(.emptyAuthority)
             }
-            let constainsRisk = authorities.contains {
-                $0.contains("TNT") || $0.contains("HCiSO")
+            let dangerousAuthorities = authorities.first {
+                let lower = $0.lowercased()
+                return lower.contains("tnt") || lower.contains("hciso") || lower.contains("ediso")
             }
-            if constainsRisk {
-                return false
+            if let dangerousAuthorities, !dangerousAuthorities.isEmpty {
+                return .failure(.dangerousAuthority(flag: String(dangerousAuthorities)))
             }
-            return true
+
+//            let teamIdentifierPrefix = "TeamIdentifier="
+//            let teamIdentifier = components.first { $0.hasPrefix(teamIdentifierPrefix) }?.dropFirst(teamIdentifierPrefix.count)
+//            guard let teamIdentifier, !teamIdentifier.isEmpty, teamIdentifier != "not set" else {
+//                return .failure(.emptyTeamID)
+//            }
+
+            return .success(())
         } catch {
-            return false
+            return .failure(.codesignCheckFailed(error))
         }
     }
 
     /// codesign -dvvv /Applications/xxxx.app/ to check codesign
     static func codeSignTask(for path: String, pipe: Pipe) -> Process {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        task.arguments = ["-dvvv", path]
-
+        let task = Process(launchPath: "/usr/bin/codesign", arguments: ["-dvvv", path])
         // Use Pipe to capture the output
         task.standardOutput = pipe
         task.standardError = pipe // Capture stderr in case there are errors

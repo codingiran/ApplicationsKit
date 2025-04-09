@@ -77,12 +77,12 @@ public extension ApplicationsKit {
             return []
         }
 #if os(macOS)
-        let combinedPaths = appURLs.map { $0.path }
+        let combinedPaths = appURLs.map { $0.filePath }
         guard let metadataDictionary = try? MDLSUtils.getMDLSMetadataAsPlist(for: combinedPaths) else {
             return []
         }
         let apps: [Application] = appURLs.compactMap {
-            let appPath = $0.path
+            let appPath = $0.filePath
             if let appMetadata = metadataDictionary[appPath] {
                 // Fetch from Metadata
                 return try? Application.getAppInfo(fromMetadata: appMetadata, at: $0)

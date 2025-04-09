@@ -78,17 +78,12 @@ enum MDLSUtils: Sendable {
     }
 
     static func mdlsTask(for paths: [String], pipe: Pipe, errorPipe: Pipe) -> Process {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/mdls")
-
         // Construct the `mdls` arguments: path + -name for each attribute + -plist - + -nullMarker ""
         let arguments = taskArguments(for: paths)
-        task.arguments = arguments
-
+        let task = Process(launchPath: "/usr/bin/mdls", arguments: arguments)
         // Use Pipe to capture the output
         task.standardOutput = pipe
         task.standardError = errorPipe // Capture stderr in case there are errors
-
         return task
     }
 

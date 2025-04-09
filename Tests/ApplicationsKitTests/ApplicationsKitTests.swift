@@ -45,7 +45,18 @@ final class ApplicationsKitTests: XCTestCase {
     
     func testRiskyApp() async {
         let apps = ApplicationsKit.systemApplications()
-        let riskyApps = apps.filter { $0.isRisky }
-        debugPrint(riskyApps)
+        for app in apps {
+            switch app.checkCodeSign() {
+            case .success:
+                continue
+            case .failure(let reason):
+                debugPrint("⚠️ Risky App: \(app.appName), Reason: \(reason.localizedDescription)")
+            }
+        }
+    }
+
+    func testProcessStatus() throws {
+        let all = ProcessStatus.all()
+        print(all)
     }
 }
