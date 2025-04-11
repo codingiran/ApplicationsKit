@@ -9,7 +9,7 @@ import Foundation
 
 // Enforce minimum Swift version for all platforms and build systems.
 #if swift(<5.9)
-#error("ApplicationsKit doesn't support Swift versions below 5.9")
+    #error("ApplicationsKit doesn't support Swift versions below 5.9")
 #endif
 
 /// The `ApplicationsKit` provides a set of static methods for working with applications on macOS.
@@ -76,26 +76,26 @@ public extension ApplicationsKit {
         guard !appURLs.isEmpty else {
             return []
         }
-#if os(macOS)
-        let combinedPaths = appURLs.map { $0.filePath }
-        guard let metadataDictionary = try? MDLSUtils.getMDLSMetadataAsPlist(for: combinedPaths) else {
-            return []
-        }
-        let apps: [Application] = appURLs.compactMap {
-            let appPath = $0.filePath
-            if let appMetadata = metadataDictionary[appPath] {
-                // Fetch from Metadata
-                return try? Application.getAppInfo(fromMetadata: appMetadata, at: $0)
-            } else {
-                // Fallback to fetch from App Bundle
-                return try? Application.getAppInfo(at: $0)
+        #if os(macOS)
+            let combinedPaths = appURLs.map { $0.filePath }
+            guard let metadataDictionary = try? MDLSUtils.getMDLSMetadataAsPlist(for: combinedPaths) else {
+                return []
             }
-        }
-        return apps
-#else
-        // macCatalyst does not support MDLS, fallback to fetch from App Bundle
-        return appURLs.compactMap { try? Application.getAppInfo(at: $0) }
-#endif
+            let apps: [Application] = appURLs.compactMap {
+                let appPath = $0.filePath
+                if let appMetadata = metadataDictionary[appPath] {
+                    // Fetch from Metadata
+                    return try? Application.getAppInfo(fromMetadata: appMetadata, at: $0)
+                } else {
+                    // Fallback to fetch from App Bundle
+                    return try? Application.getAppInfo(at: $0)
+                }
+            }
+            return apps
+        #else
+            // macCatalyst does not support MDLS, fallback to fetch from App Bundle
+            return appURLs.compactMap { try? Application.getAppInfo(at: $0) }
+        #endif
     }
 
     /// The application URLs at the specified directory.

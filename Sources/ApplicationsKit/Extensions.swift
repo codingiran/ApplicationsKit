@@ -109,56 +109,52 @@ extension Array {
     }
 }
 
-#if os(macOS)
-
 #if canImport(AppKit)
 
-import AppKit
+    import AppKit
 
-@available(macOS 10.15, *)
-extension NSImage {
-    func convertICNSToPNGData(size: NSSize? = nil) -> Data? {
-        // Resize the icon to the specified size
-        let resizedIcon: NSImage = {
-            guard let size else {
-                return self
+    @available(macOS 10.15, *)
+    extension NSImage {
+        func convertICNSToPNGData(size: NSSize? = nil) -> Data? {
+            // Resize the icon to the specified size
+            let resizedIcon: NSImage = {
+                guard let size else {
+                    return self
+                }
+                let resizedIcon = NSImage(size: size)
+                resizedIcon.lockFocus()
+                draw(in: NSRect(x: 0, y: 0, width: size.width, height: size.height))
+                resizedIcon.unlockFocus()
+                return resizedIcon
+            }()
+
+            // Convert the resized icon to PNG format
+            guard let resizedImageData = resizedIcon.tiffRepresentation,
+                  let resizedBitmap = NSBitmapImageRep(data: resizedImageData),
+                  let pngData = resizedBitmap.representation(using: .png, properties: [:])
+            else {
+                return nil
             }
-            let resizedIcon = NSImage(size: size)
-            resizedIcon.lockFocus()
-            draw(in: NSRect(x: 0, y: 0, width: size.width, height: size.height))
-            resizedIcon.unlockFocus()
-            return resizedIcon
-        }()
 
-        // Convert the resized icon to PNG format
-        guard let resizedImageData = resizedIcon.tiffRepresentation,
-              let resizedBitmap = NSBitmapImageRep(data: resizedImageData),
-              let pngData = resizedBitmap.representation(using: .png, properties: [:])
-        else {
-            return nil
+            return pngData
         }
 
-        return pngData
-    }
-
-    func convertICNSToPNGImage(size: NSSize? = nil) -> NSImage? {
-        guard let pngData = convertICNSToPNGData() else {
-            return nil
+        func convertICNSToPNGImage(size _: NSSize? = nil) -> NSImage? {
+            guard let pngData = convertICNSToPNGData() else {
+                return nil
+            }
+            return NSImage(data: pngData)
         }
-        return NSImage(data: pngData)
     }
-}
 
-extension NSImage: @retroactive @unchecked Sendable {}
+    extension NSImage: @retroactive @unchecked Sendable {}
 
-#endif
-
-extension Foundation.Process {
-    convenience init(launchPath: String, arguments: [String]?) {
-        self.init()
-        self.executableURL = URL(fileURLPath: launchPath)
-        self.arguments = arguments
+    extension Foundation.Process {
+        convenience init(launchPath: String, arguments: [String]?) {
+            self.init()
+            executableURL = URL(fileURLPath: launchPath)
+            self.arguments = arguments
+        }
     }
-}
 
 #endif

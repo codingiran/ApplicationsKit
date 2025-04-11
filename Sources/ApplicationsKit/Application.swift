@@ -15,40 +15,40 @@ public struct Application: Codable, Identifiable, Equatable, Hashable, Sendable 
 
     /// The path to the application.
     public let path: URL
-    
+
     /// The bundle identifier for the application.
     public let bundleIdentifier: String
-    
+
     /// The name of the application.
     public let appName: String
-    
+
     /// The version of the application.
     public let appVersion: String
-    
+
     /// Whether the application is a web app.
     public let isWebApp: Bool
-    
+
     /// Whether the application is wrapped.
     public let isWrapped: Bool
-    
+
     /// Whether the application is a global installed app.
     public let isGlobal: Bool
-    
+
     /// Whether the application is from metadata.
     public let isFromMetadata: Bool
-    
+
     /// The architecture of the application.
     public var arch: Application.Arch
-    
+
     /// The bundle size of the application.
     public var bundleSize: Int64
-    
+
     /// The creation date of the application.
     public let creationDate: Date?
-    
+
     /// The content change date of the application.
     public let contentChangeDate: Date?
-    
+
     /// The last used date of the application.
     public let lastUsedDate: Date?
 }

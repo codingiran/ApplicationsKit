@@ -18,13 +18,13 @@ extension Application {
 
         var errorDescription: String? {
             switch self {
-            case .noAppFilesFound(let url):
+            case let .noAppFilesFound(url):
                 return "No .app files found in the directory: \(url)"
-            case .appContentsReadingFailed(let error, let url):
+            case let .appContentsReadingFailed(error, url):
                 return "Error reading app contents at directory: \(url) failed: \(error.localizedDescription)"
-            case .appBundleNotFound(let url):
+            case let .appBundleNotFound(url):
                 return "App bundle not found at directory: \(url)"
-            case .appBundleIdentifierNotFound(let url):
+            case let .appBundleIdentifierNotFound(url):
                 return "App bundle identifier not found at directory: \(url)"
             }
         }
@@ -33,79 +33,79 @@ extension Application {
 
 #if os(macOS)
 
-// MARK: - Fetch from Metadata
+    // MARK: - Fetch from Metadata
 
-extension Application {
-    static func getAppInfo(fromMetadata metadata: MDLSMetadata, at url: URL) throws -> Application {
-        // Extract metadata attributes for known fields
-        var displayName = metadata["kMDItemDisplayName"] as? String ?? ""
-        displayName = displayName.replacingOccurrences(of: ".app", with: "").capitalizingFirstLetter()
-        let fsName = metadata["kMDItemFSName"] as? String ?? url.lastPathComponent
-        let appName = displayName.isEmpty ? fsName : displayName
+    extension Application {
+        static func getAppInfo(fromMetadata metadata: MDLSMetadata, at url: URL) throws -> Application {
+            // Extract metadata attributes for known fields
+            var displayName = metadata["kMDItemDisplayName"] as? String ?? ""
+            displayName = displayName.replacingOccurrences(of: ".app", with: "").capitalizingFirstLetter()
+            let fsName = metadata["kMDItemFSName"] as? String ?? url.lastPathComponent
+            let appName = displayName.isEmpty ? fsName : displayName
 
-        let bundleIdentifier = metadata["kMDItemCFBundleIdentifier"] as? String ?? ""
-        let version = metadata["kMDItemVersion"] as? String ?? ""
+            let bundleIdentifier = metadata["kMDItemCFBundleIdentifier"] as? String ?? ""
+            let version = metadata["kMDItemVersion"] as? String ?? ""
 
-        // Sizes
-        let logicalSize = metadata["kMDItemLogicalSize"] as? Int64 ?? 0
-        let physicalSize = metadata["kMDItemPhysicalSize"] as? Int64 ?? 0
+            // Sizes
+            let logicalSize = metadata["kMDItemLogicalSize"] as? Int64 ?? 0
+            let physicalSize = metadata["kMDItemPhysicalSize"] as? Int64 ?? 0
 
-        // Check if any of the critical fields are missing or invalid
-        if appName.isEmpty || bundleIdentifier.isEmpty || version.isEmpty || logicalSize == 0 || physicalSize == 0 {
-            // Fallback to the regular AppInfoFetcher for this app
-            return try getAppInfo(at: url)
+            // Check if any of the critical fields are missing or invalid
+            if appName.isEmpty || bundleIdentifier.isEmpty || version.isEmpty || logicalSize == 0 || physicalSize == 0 {
+                // Fallback to the regular AppInfoFetcher for this app
+                return try getAppInfo(at: url)
+            }
+
+            // Extract optional date fields
+            let creationDate = metadata["kMDItemFSCreationDate"] as? Date
+            let contentChangeDate = metadata["kMDItemFSContentChangeDate"] as? Date
+            let lastUsedDate = metadata["kMDItemLastUsedDate"] as? Date
+
+            // Determine architecture type
+            let arch = determineArchitecture(from: metadata)
+
+            // Use similar helper functions as `AppInfoFetcher` for attributes not found in metadata
+            let isWrapped = isDirectoryWrapped(path: url)
+            let isWebApp = isWebApp(appPath: url)
+            let isGlobal = !url.filePath.contains(NSHomeDirectory())
+
+            return Application(path: url,
+                               bundleIdentifier: bundleIdentifier,
+                               appName: appName,
+                               appVersion: version,
+                               isWebApp: isWebApp,
+                               isWrapped: isWrapped,
+                               isGlobal: isGlobal,
+                               isFromMetadata: true,
+                               arch: arch,
+                               bundleSize: logicalSize,
+                               creationDate: creationDate,
+                               contentChangeDate: contentChangeDate,
+                               lastUsedDate: lastUsedDate)
         }
 
-        // Extract optional date fields
-        let creationDate = metadata["kMDItemFSCreationDate"] as? Date
-        let contentChangeDate = metadata["kMDItemFSContentChangeDate"] as? Date
-        let lastUsedDate = metadata["kMDItemLastUsedDate"] as? Date
+        /// Determine the architecture type based on metadata
+        static func determineArchitecture(from metadata: MDLSMetadata) -> Application.Arch {
+            guard let architectures = metadata["kMDItemExecutableArchitectures"] as? [String] else {
+                return .empty
+            }
 
-        // Determine architecture type
-        let arch = determineArchitecture(from: metadata)
+            // Check for ARM and Intel presence
+            let containsArm = architectures.contains("arm64")
+            let containsIntel = architectures.contains("x86_64")
 
-        // Use similar helper functions as `AppInfoFetcher` for attributes not found in metadata
-        let isWrapped = isDirectoryWrapped(path: url)
-        let isWebApp = isWebApp(appPath: url)
-        let isGlobal = !url.filePath.contains(NSHomeDirectory())
-
-        return Application(path: url,
-                           bundleIdentifier: bundleIdentifier,
-                           appName: appName,
-                           appVersion: version,
-                           isWebApp: isWebApp,
-                           isWrapped: isWrapped,
-                           isGlobal: isGlobal,
-                           isFromMetadata: true,
-                           arch: arch,
-                           bundleSize: logicalSize,
-                           creationDate: creationDate,
-                           contentChangeDate: contentChangeDate,
-                           lastUsedDate: lastUsedDate)
+            // Determine the Arch type based on available architectures
+            if containsArm && containsIntel {
+                return .universal
+            } else if containsArm {
+                return .arm
+            } else if containsIntel {
+                return .intel
+            } else {
+                return .empty
+            }
+        }
     }
-
-    /// Determine the architecture type based on metadata
-    static func determineArchitecture(from metadata: MDLSMetadata) -> Application.Arch {
-        guard let architectures = metadata["kMDItemExecutableArchitectures"] as? [String] else {
-            return .empty
-        }
-
-        // Check for ARM and Intel presence
-        let containsArm = architectures.contains("arm64")
-        let containsIntel = architectures.contains("x86_64")
-
-        // Determine the Arch type based on available architectures
-        if containsArm && containsIntel {
-            return .universal
-        } else if containsArm {
-            return .arm
-        } else if containsIntel {
-            return .intel
-        } else {
-            return .empty
-        }
-    }
-}
 
 #endif
 
