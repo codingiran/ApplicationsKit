@@ -1,6 +1,6 @@
 @testable import ApplicationsKit
-import XCTest
 import Security
+import XCTest
 
 final class ApplicationsKitTests: XCTestCase {
     // MARK: - Test Setup
@@ -58,6 +58,14 @@ final class ApplicationsKitTests: XCTestCase {
     func testSystemApplications() {
         // When
         let applications = ApplicationsKit.systemApplications()
+        
+        let sysApp = applications.filter {
+            let codeSign = try? CodesignUtils.checkCodeSign(at: $0.path)
+            guard let codeSign, let authorities = codeSign.authorities else {
+                return false
+            }
+            return Set(authorities) == ["Software Signing", "Apple Code Signing Certification Authority", "Apple Root CA"]
+        }
 
         // Then
         XCTAssertFalse(applications.isEmpty, "System applications list should not be empty")
@@ -181,9 +189,9 @@ final class ApplicationsKitTests: XCTestCase {
         XCTAssertNotNil(firstApp.contentChangeDate, "Application should have a content change date")
         XCTAssertGreaterThanOrEqual(firstApp.bundleSize, 0, "Application bundle size should be non-negative")
     }
-    
+
     // MARK: - Application Risky Tests
-    
+
     func testApplicationRisky() {
         // Given
         let systemApps = ApplicationsKit.systemApplications()
@@ -204,7 +212,7 @@ final class ApplicationsKitTests: XCTestCase {
 
         // Then
         let isRisky = risky.contains { app in
-            return riskyApps.contains(app.appName)
+            riskyApps.contains(app.appName)
         }
         XCTAssertTrue(isRisky, "Application should be risky")
     }
@@ -248,32 +256,58 @@ final class ApplicationsKitTests: XCTestCase {
         XCTAssertEqual(MDLSMetadataAttribute.version.rawValue, kMDItemVersion as String)
         XCTAssertEqual(MDLSMetadataAttribute.copyright.rawValue, kMDItemCopyright as String)
     }
-    
-    func testExtractDeveloperInfo() {
-        let appURL = URL(fileURLWithPath: "/Applications/QQ.app")
+}
 
-        var staticCode: SecStaticCode?
-        let status = SecStaticCodeCreateWithPath(appURL as CFURL, [], &staticCode)
+// MARK: - Test code sign
 
-        guard status == errSecSuccess, let code = staticCode else {
-            print("❌ 无法创建代码引用")
-            return
-        }
+extension ApplicationsKitTests {
+    func testXcodeCodeSign() async throws {
+        let xcode = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Xcode.app"))
+        XCTAssertNotNil(xcode, "Xcode application should not be nil")
+        let codeSign = xcode?.codeSignInfo
+        XCTAssertNotNil(codeSign, "Code sign info should not be nil")
+        let xcodeVendor = "Apple Inc."
+        let signVendor = await xcode?.vendor
+        XCTAssertEqual(signVendor, xcodeVendor, "Sign vendor should be \(xcodeVendor)")
+    }
 
-        var signingInfo: CFDictionary?
-        let flags: SecCSFlags = SecCSFlags(rawValue: kSecCSSigningInformation)
-        let infoStatus = SecCodeCopySigningInformation(code, flags, &signingInfo)
+    func testVSCodeCodeSign() async throws {
+        let vsCode = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
+        XCTAssertNotNil(vsCode, "VSCode application should not be nil")
+        let codeSign = vsCode?.codeSignInfo
+        XCTAssertNotNil(codeSign, "Code sign info should not be nil")
+        let vsCodeVendor = "Microsoft Corporation"
+        let signVendor = await vsCode?.vendor
+        XCTAssertEqual(signVendor, vsCodeVendor, "Sign vendor should be \(vsCodeVendor)")
+    }
 
-        guard infoStatus == errSecSuccess,
-              let info = signingInfo as? [String: Any] else {
-            print("❌ 无法获取签名信息")
-            return
-        }
+    func testTelegramCodeSign() async throws {
+        let telegram = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Telegram.app"))
+        XCTAssertNotNil(telegram, "Telegram application should not be nil")
+        let codeSign = telegram?.codeSignInfo
+        XCTAssertNotNil(codeSign, "Code sign info should not be nil")
+        let telegramVendor = "TELEGRAM MESSENGER LLP"
+        let signVendor = await telegram?.vendor
+        XCTAssertEqual(signVendor, telegramVendor, "Sign vendor should be \(telegramVendor)")
+    }
 
-        let certificates = info["certificates"]
-        let teamID = info["teamid"] as? String ?? "未知TeamID"
+    func testQQCodeSign() async throws {
+        let qq = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/QQ.app"))
+        XCTAssertNotNil(qq, "QQ application should not be nil")
+        let codeSign = qq?.codeSignInfo
+        XCTAssertNotNil(codeSign, "Code sign info should not be nil")
+        let qqVendor = "Tencent Technology (Shanghai) Co., Ltd"
+        let signVendor = await qq?.vendor
+        XCTAssertEqual(signVendor, qqVendor, "Sign vendor should be \(qqVendor)")
+    }
 
-//        print("✅ 开发者名称: \(signerName)")
-        print("🏷️  Apple Team ID: \(teamID)")
+    func testMacAppStoreAppCodeSign() async throws {
+        let mactracker = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Mactracker.app"))
+        XCTAssertNotNil(mactracker, "Mactracker application should not be nil")
+        let codeSign = mactracker?.codeSignInfo
+        XCTAssertNotNil(codeSign, "Code sign info should not be nil")
+        let appStoreVendor = "Ian Page"
+        let signVendor = await mactracker?.vendor
+        XCTAssertEqual(signVendor, appStoreVendor, "Sign vendor should be \(appStoreVendor)")
     }
 }

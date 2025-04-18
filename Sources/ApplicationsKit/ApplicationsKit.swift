@@ -76,20 +76,24 @@ public extension ApplicationsKit {
         guard !appURLs.isEmpty else {
             return []
         }
+        return appURLs.compactMap { application(of: $0) }
+    }
+
+    static func application(of appURL: URL) -> Application? {
+        guard FileManager.default.fileExists(at: appURL) else {
+            return nil
+        }
         #if os(macOS)
-            let apps: [Application] = appURLs.compactMap {
-                guard let appMetadata = try? MDLSUtils.parseMDItemCreation(for: $0.filePath),
-                      let app = try? Application.getAppInfo(fromMetadata: appMetadata, at: $0)
-                else {
-                    // Fallback to fetch from App Bundle
-                    return try? Application.getAppInfo(at: $0)
-                }
-                return app
+            guard let appMetadata = try? MDLSUtils.parseMDItemCreation(for: appURL.filePath),
+                  let app = try? Application.getAppInfo(fromMetadata: appMetadata, at: appURL)
+            else {
+                // Fallback to fetch from App Bundle
+                return try? Application.getAppInfo(at: appURL)
             }
-            return apps
+            return app
         #else
             // macCatalyst does not support MDLS, fallback to fetch from App Bundle
-            return appURLs.compactMap { try? Application.getAppInfo(at: $0) }
+            return try? Application.getAppInfo(at: appURL)
         #endif
     }
 

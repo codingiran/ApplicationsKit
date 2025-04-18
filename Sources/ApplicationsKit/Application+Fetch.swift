@@ -218,3 +218,62 @@ extension Application {
             (infoDict["CFBundleExecutable"] as? String == "app_mode_loader")
     }
 }
+
+extension Application {
+    var codeSignInfo: CodesignUtils.CodeSignInfo? {
+        guard let codeSign = try? CodesignUtils.checkCodeSign(at: path) else {
+            return nil
+        }
+        return codeSign
+    }
+
+    var vendor: String? {
+        get async {
+            guard let codeSign = codeSignInfo,
+                  let authorities = codeSign.authorities, !authorities.isEmpty
+            else {
+                return nil
+            }
+            // Get `Microsoft Corporation` in `Developer ID Application: Microsoft Corporation (UBF8T346G9)`
+            if let authority = authorities.first(where: { $0.hasPrefix("Developer ID Application") }),
+               let regex = try? NSRegularExpression(pattern: Self.pattern, options: []),
+               let match = regex.firstMatch(in: authority, options: [], range: NSRange(authority.startIndex ..< authority.endIndex, in: authority)),
+               let nameRange = Range(match.range(at: 1), in: authority)
+            {
+                return String(authority[nameRange])
+            }
+            if Set(authorities) == ["Software Signing", "Apple Code Signing Certification Authority", "Apple Root CA"] {
+                return "Apple Inc."
+            }
+            if codeSign.isAppStore,
+               let sellerName = await fetchAppSellerNameFromAppStore(by: bundleIdentifier),
+               !sellerName.isEmpty
+            {
+                return sellerName
+            }
+            return nil
+        }
+    }
+
+    static let pattern = #"Developer ID Application:\s+(.+?)\s+\([A-Z0-9]+\)"#
+
+    func fetchAppSellerNameFromAppStore(by bundleId: String) async -> String? {
+        let urlStr = "https://itunes.apple.com/lookup?bundleId=\(bundleId)"
+        guard let url = URL(string: urlStr) else {
+            return nil
+        }
+        let response = try? await URLSession.shared.data(for: URLRequest(url: url))
+        guard let data = response?.0 else {
+            return nil
+        }
+        let json = try? JSONSerialization.jsonObject(with: data, options: [])
+        guard let dict = json as? [String: Any],
+              let results = dict["results"] as? [[String: Any]],
+              let firstResult = results.first,
+              let artistName = firstResult["sellerName"] as? String
+        else {
+            return nil
+        }
+        return artistName
+    }
+}
