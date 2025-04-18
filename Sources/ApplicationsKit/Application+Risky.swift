@@ -34,6 +34,18 @@ import Foundation
                     return "Empty Team ID"
                 }
             }
+
+            public var reason: String {
+                switch self {
+                case .codesignCheckFailed:
+                    return "签名异常"
+                case .emptyAuthority,
+                     .emptyTeamID:
+                    return "应用未鉴权"
+                case let .dangerousAuthority(flag):
+                    return "\(flag)破解软件"
+                }
+            }
         }
     }
 

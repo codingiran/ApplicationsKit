@@ -32,6 +32,8 @@ public struct Application: Codable, Identifiable, Equatable, Hashable, Sendable 
     public let isWrapped: Bool
 
     /// Whether the application is a global installed app.
+    /// Global installed apps are installed in the system applications directory: `/Applications`.
+    /// Non-global installed apps are installed in the user applications directory: `~/Applications`.
     public let isGlobal: Bool
 
     /// Whether the application is from metadata.
@@ -51,6 +53,15 @@ public struct Application: Codable, Identifiable, Equatable, Hashable, Sendable 
 
     /// The last used date of the application.
     public let lastUsedDate: Date?
+
+    /// The copyright of the application.
+    public let copyright: String?
+
+    /// The AppStore category of the application.
+    public let appStoreCategory: String?
+
+    /// The AppStore category type of the application.
+    public let appStoreCategoryType: String?
 }
 
 public extension Application {

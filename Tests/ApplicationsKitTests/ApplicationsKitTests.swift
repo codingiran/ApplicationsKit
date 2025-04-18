@@ -1,5 +1,6 @@
 @testable import ApplicationsKit
 import XCTest
+import Security
 
 final class ApplicationsKitTests: XCTestCase {
     // MARK: - Test Setup
@@ -114,7 +115,6 @@ final class ApplicationsKitTests: XCTestCase {
 
     // MARK: - Application Icon Tests
 
-    @available(macOS 10.15, *)
     func testApplicationIcon() async {
         // Given
         let systemApps = ApplicationsKit.systemApplications()
@@ -132,7 +132,6 @@ final class ApplicationsKitTests: XCTestCase {
         XCTAssertGreaterThan(icon?.size.height ?? 0, 0, "Icon should have a height")
     }
 
-    @available(macOS 10.15, *)
     func testApplicationIconWithSize() async {
         // Given
         let systemApps = ApplicationsKit.systemApplications()
@@ -182,6 +181,33 @@ final class ApplicationsKitTests: XCTestCase {
         XCTAssertNotNil(firstApp.contentChangeDate, "Application should have a content change date")
         XCTAssertGreaterThanOrEqual(firstApp.bundleSize, 0, "Application bundle size should be non-negative")
     }
+    
+    // MARK: - Application Risky Tests
+    
+    func testApplicationRisky() {
+        // Given
+        let systemApps = ApplicationsKit.systemApplications()
+
+        let risky = systemApps.filter { app in
+            let result = app.checkCodeSign()
+            switch result {
+            case .success:
+                return false
+            case .failure(let error):
+                print("\(app.appName) is risky for: \(error.reason)")
+                return true
+            }
+        }
+
+        // Risky applications
+        let riskyApps = ["Sketch"]
+
+        // Then
+        let isRisky = risky.contains { app in
+            return riskyApps.contains(app.appName)
+        }
+        XCTAssertTrue(isRisky, "Application should be risky")
+    }
 
     // MARK: - Performance Tests
 
@@ -197,7 +223,6 @@ final class ApplicationsKitTests: XCTestCase {
         }
     }
 
-    @available(macOS 10.15, *)
     func testPerformanceOfApplicationIcon() async {
         let systemApps = ApplicationsKit.systemApplications()
         guard let firstApp = systemApps.first else {
@@ -210,5 +235,45 @@ final class ApplicationsKitTests: XCTestCase {
                 _ = await ApplicationIcon.shared.icon(for: firstApp)
             }
         }
+    }
+
+    func testMDAttributeKeyDefine() {
+        XCTAssertEqual(MDLSMetadataAttribute.fsName.rawValue, kMDItemFSName as String)
+        XCTAssertEqual(MDLSMetadataAttribute.fsCreationDate.rawValue, kMDItemFSCreationDate as String)
+        XCTAssertEqual(MDLSMetadataAttribute.fsContentChangeDate.rawValue, kMDItemFSContentChangeDate as String)
+        XCTAssertEqual(MDLSMetadataAttribute.lastUsedDate.rawValue, kMDItemLastUsedDate as String)
+        XCTAssertEqual(MDLSMetadataAttribute.displayName.rawValue, kMDItemDisplayName as String)
+        XCTAssertEqual(MDLSMetadataAttribute.bundleIdentifier.rawValue, kMDItemCFBundleIdentifier as String)
+        XCTAssertEqual(MDLSMetadataAttribute.executableArchitectures.rawValue, kMDItemExecutableArchitectures as String)
+        XCTAssertEqual(MDLSMetadataAttribute.version.rawValue, kMDItemVersion as String)
+        XCTAssertEqual(MDLSMetadataAttribute.copyright.rawValue, kMDItemCopyright as String)
+    }
+    
+    func testExtractDeveloperInfo() {
+        let appURL = URL(fileURLWithPath: "/Applications/QQ.app")
+
+        var staticCode: SecStaticCode?
+        let status = SecStaticCodeCreateWithPath(appURL as CFURL, [], &staticCode)
+
+        guard status == errSecSuccess, let code = staticCode else {
+            print("❌ 无法创建代码引用")
+            return
+        }
+
+        var signingInfo: CFDictionary?
+        let flags: SecCSFlags = SecCSFlags(rawValue: kSecCSSigningInformation)
+        let infoStatus = SecCodeCopySigningInformation(code, flags, &signingInfo)
+
+        guard infoStatus == errSecSuccess,
+              let info = signingInfo as? [String: Any] else {
+            print("❌ 无法获取签名信息")
+            return
+        }
+
+        let certificates = info["certificates"]
+        let teamID = info["teamid"] as? String ?? "未知TeamID"
+
+//        print("✅ 开发者名称: \(signerName)")
+        print("🏷️  Apple Team ID: \(teamID)")
     }
 }

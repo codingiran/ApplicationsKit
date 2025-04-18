@@ -12,7 +12,6 @@ import Foundation
     import AppKit
     import SwiftyCache
 
-    @available(macOS 10.15, *)
     public struct ApplicationIcon: Sendable {
         public static let shared = ApplicationIcon()
 

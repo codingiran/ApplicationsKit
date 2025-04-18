@@ -113,7 +113,6 @@ extension Array {
 
     import AppKit
 
-    @available(macOS 10.15, *)
     extension NSImage {
         func convertICNSToPNGData(size: NSSize? = nil) -> Data? {
             // Resize the icon to the specified size

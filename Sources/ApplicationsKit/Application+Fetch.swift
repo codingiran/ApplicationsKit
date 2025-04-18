@@ -14,7 +14,11 @@ extension Application {
         case noAppFilesFound(URL)
         case appContentsReadingFailed(Error, URL)
         case appBundleNotFound(URL)
+        case appNameNotFound(URL)
         case appBundleIdentifierNotFound(URL)
+        case appVersionNotFound(URL)
+        case appLogicalSizeNotFound(URL)
+        case appPhysicalSizeNotFound(URL)
 
         var errorDescription: String? {
             switch self {
@@ -24,8 +28,16 @@ extension Application {
                 return "Error reading app contents at directory: \(url) failed: \(error.localizedDescription)"
             case let .appBundleNotFound(url):
                 return "App bundle not found at directory: \(url)"
+            case let .appNameNotFound(url):
+                return "App name not found at directory: \(url)"
             case let .appBundleIdentifierNotFound(url):
                 return "App bundle identifier not found at directory: \(url)"
+            case let .appVersionNotFound(url):
+                return "App version not found at directory: \(url)"
+            case let .appLogicalSizeNotFound(url):
+                return "App logical size not found at directory: \(url)"
+            case let .appPhysicalSizeNotFound(url):
+                return "App physical size not found at directory: \(url)"
             }
         }
     }
@@ -38,28 +50,37 @@ extension Application {
     extension Application {
         static func getAppInfo(fromMetadata metadata: MDLSMetadata, at url: URL) throws -> Application {
             // Extract metadata attributes for known fields
-            var displayName = metadata["kMDItemDisplayName"] as? String ?? ""
-            displayName = displayName.replacingOccurrences(of: ".app", with: "").capitalizingFirstLetter()
-            let fsName = metadata["kMDItemFSName"] as? String ?? url.lastPathComponent
-            let appName = displayName.isEmpty ? fsName : displayName
+            let appName = {
+                // use displayName if available, otherwise use fsName
+                if let displayName = metadata.displayName?.replacingOccurrences(of: ".app", with: "").capitalizingFirstLetter(),
+                   !displayName.isEmpty
+                {
+                    return displayName
+                }
+                return metadata.fsName ?? url.lastPathComponent
+            }()
 
-            let bundleIdentifier = metadata["kMDItemCFBundleIdentifier"] as? String ?? ""
-            let version = metadata["kMDItemVersion"] as? String ?? ""
+            let bundleIdentifier = metadata.bundleIdentifier
 
-            // Sizes
-            let logicalSize = metadata["kMDItemLogicalSize"] as? Int64 ?? 0
-            let physicalSize = metadata["kMDItemPhysicalSize"] as? Int64 ?? 0
+            // Some apps don't have a version, so we use an empty string as a fallback
+            // etc. Old version Electron apps
+            let appVersion = metadata.version ?? ""
 
-            // Check if any of the critical fields are missing or invalid
-            if appName.isEmpty || bundleIdentifier.isEmpty || version.isEmpty || logicalSize == 0 || physicalSize == 0 {
-                // Fallback to the regular AppInfoFetcher for this app
-                return try getAppInfo(at: url)
+            // Some apps may not have valid size
+            // etc. SF Symbols
+            let bundleSize = metadata.logicalSize ?? metadata.physicalSize ?? 0
+
+            guard !appName.isEmpty else {
+                throw Application.FetcherError.appNameNotFound(url)
+            }
+            guard let bundleIdentifier, !bundleIdentifier.isEmpty else {
+                throw Application.FetcherError.appBundleIdentifierNotFound(url)
             }
 
             // Extract optional date fields
-            let creationDate = metadata["kMDItemFSCreationDate"] as? Date
-            let contentChangeDate = metadata["kMDItemFSContentChangeDate"] as? Date
-            let lastUsedDate = metadata["kMDItemLastUsedDate"] as? Date
+            let creationDate = metadata.fsCreationDate
+            let contentChangeDate = metadata.fsContentChangeDate
+            let lastUsedDate = metadata.lastUsedDate
 
             // Determine architecture type
             let arch = determineArchitecture(from: metadata)
@@ -69,24 +90,32 @@ extension Application {
             let isWebApp = isWebApp(appPath: url)
             let isGlobal = !url.filePath.contains(NSHomeDirectory())
 
+            // Copyright and App Store category are not available in metadata
+            let copyright = metadata.copyright
+            let appStoreCategory = metadata.appStoreCategory
+            let appStoreCategoryType = metadata.appStoreCategoryType
+
             return Application(path: url,
                                bundleIdentifier: bundleIdentifier,
                                appName: appName,
-                               appVersion: version,
+                               appVersion: appVersion,
                                isWebApp: isWebApp,
                                isWrapped: isWrapped,
                                isGlobal: isGlobal,
                                isFromMetadata: true,
                                arch: arch,
-                               bundleSize: logicalSize,
+                               bundleSize: bundleSize,
                                creationDate: creationDate,
                                contentChangeDate: contentChangeDate,
-                               lastUsedDate: lastUsedDate)
+                               lastUsedDate: lastUsedDate,
+                               copyright: copyright,
+                               appStoreCategory: appStoreCategory,
+                               appStoreCategoryType: appStoreCategoryType)
         }
 
         /// Determine the architecture type based on metadata
         static func determineArchitecture(from metadata: MDLSMetadata) -> Application.Arch {
-            guard let architectures = metadata["kMDItemExecutableArchitectures"] as? [String] else {
+            guard let architectures = metadata.executableArchitectures else {
                 return .empty
             }
 
@@ -168,7 +197,10 @@ extension Application {
                            bundleSize: 0,
                            creationDate: nil,
                            contentChangeDate: nil,
-                           lastUsedDate: nil)
+                           lastUsedDate: nil,
+                           copyright: nil,
+                           appStoreCategory: nil,
+                           appStoreCategoryType: nil)
     }
 }
 
