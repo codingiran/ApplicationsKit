@@ -9,7 +9,7 @@ import Foundation
 
 #if os(macOS)
 
-struct CodesignUtils: Sendable {
+public struct CodesignUtils: Sendable {
     static func checkApplicationCodeSign(_ application: Application) throws -> CodesignUtils.CodeSignInfo {
         try checkCodeSign(at: application.path)
     }
@@ -65,7 +65,7 @@ extension CodesignUtils {
     }
 }
 
-extension CodesignUtils {
+public extension CodesignUtils {
     /*
      Executable=/Applications/Visual Studio Code.app/Contents/MacOS/Electron
      Identifier=com.microsoft.VSCode
@@ -109,6 +109,37 @@ extension CodesignUtils {
             }
             return true
         }
+
+        var vendorInCodeSign: String? {
+            guard let authorities = authorities,
+                  !authorities.isEmpty
+            else {
+                return nil
+            }
+            // Get `Microsoft Corporation` in `Developer ID Application: Microsoft Corporation (UBF8T346G9)`
+            if let authority = authorities.first(where: { $0.hasPrefix("Developer ID Application") }),
+               let regex = try? NSRegularExpression(pattern: Self.pattern, options: []),
+               let match = regex.firstMatch(in: authority, options: [], range: NSRange(authority.startIndex ..< authority.endIndex, in: authority)),
+               let nameRange = Range(match.range(at: 1), in: authority)
+            {
+                return String(authority[nameRange])
+            }
+            // Get `xxxxx@gmail.com (RL***2Y)` in `Apple Development: xxxxx@gmail.com (RL***2Y)`
+            if let authority = authorities.first(where: { $0.hasPrefix(CodeSignInfo.appleDevelopmentPrefix) }) {
+                let developer = authority.replacingOccurrences(of: CodeSignInfo.appleDevelopmentPrefix, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if !developer.isEmpty {
+                    return developer
+                }
+            }
+            if Set(authorities) == ["Software Signing", "Apple Code Signing Certification Authority", "Apple Root CA"] {
+                return "Apple Inc."
+            }
+            return nil
+        }
+
+        private static let pattern = #"Developer ID Application:\s+(.+?)\s+\([A-Z0-9]+\)"#
+
+        private static let appleDevelopmentPrefix = "Apple Development:"
 
         init(output: String) {
             let lines = output.split(separator: "\n")

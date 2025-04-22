@@ -227,54 +227,12 @@ extension Application {
 // MARK: Fetch Seller Name
 
 extension Application {
-    var codeSignInfo: CodesignUtils.CodeSignInfo? {
-        guard let codeSign = try? CodesignUtils.checkCodeSign(at: path) else {
+    func fetchSellerNameInCodeSign(_ codeSign: CodesignUtils.CodeSignInfo? = nil) -> String? {
+        guard let codeSign = try? codeSign ?? self.codeSign() else {
             return nil
         }
-        return codeSign
+        return codeSign.vendorInCodeSign
     }
-
-    var vendor: String? {
-        get async {
-            guard let codeSign = codeSignInfo,
-                  let authorities = codeSign.authorities, !authorities.isEmpty
-            else {
-                return nil
-            }
-            // Get `Microsoft Corporation` in `Developer ID Application: Microsoft Corporation (UBF8T346G9)`
-            if let authority = authorities.first(where: { $0.hasPrefix("Developer ID Application") }),
-               let regex = try? NSRegularExpression(pattern: Self.pattern, options: []),
-               let match = regex.firstMatch(in: authority, options: [], range: NSRange(authority.startIndex ..< authority.endIndex, in: authority)),
-               let nameRange = Range(match.range(at: 1), in: authority)
-            {
-                return String(authority[nameRange])
-            }
-            // Get `xxxxx@gmail.com (RL***2Y)` in `Apple Development: xxxxx@gmail.com (RL***2Y)`
-            if let authority = authorities.first(where: { $0.hasPrefix(Application.appleDevelopmentPrefix) }) {
-                let developer = authority.replacingOccurrences(of: Application.appleDevelopmentPrefix, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-                if !developer.isEmpty {
-                    return developer
-                }
-            }
-            if Set(authorities) == ["Software Signing", "Apple Code Signing Certification Authority", "Apple Root CA"] {
-                return "Apple Inc."
-            }
-            if codeSign.isAppStore,
-               let sellerName = await fetchAppSellerName(by: bundleIdentifier),
-               !sellerName.isEmpty
-            {
-                return sellerName
-            }
-            if let authority = authorities.first, !authority.isEmpty {
-                return authority
-            }
-            return nil
-        }
-    }
-
-    private static let pattern = #"Developer ID Application:\s+(.+?)\s+\([A-Z0-9]+\)"#
-
-    private static let appleDevelopmentPrefix = "Apple Development:"
 }
 
 // MARK: Fetch Seller Name from App Store

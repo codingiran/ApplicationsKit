@@ -12,9 +12,14 @@ import Foundation
     // MARK: - Risky Detection
 
     public extension Application {
-        func checkRiskyCodeSign() -> Result<Void, RiskyReason> {
+        func codeSign() throws -> CodesignUtils.CodeSignInfo {
+            let codeSign = try CodesignUtils.checkApplicationCodeSign(self)
+            return codeSign
+        }
+
+        func checkRiskyCodeSign(_ codeSign: CodesignUtils.CodeSignInfo? = nil) -> Result<Void, RiskyReason> {
             do {
-                let codeSign = try CodesignUtils.checkApplicationCodeSign(self)
+                let codeSign = try codeSign ?? self.codeSign()
                 let authorities = codeSign.authorities
                 guard let authorities, !authorities.isEmpty else {
                     // No authority
