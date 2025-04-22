@@ -91,17 +91,17 @@ public extension CodesignUtils {
      Internal requirements count=1 size=180
      */
     struct CodeSignInfo: Sendable {
-        var executablePath: String?
-        var identifier: String?
-        var format: String?
-        var codeDirectory: String?
-        var timestamp: String?
-        var authorities: [String]?
-        var teamIdentifier: String?
-        var notarizationTicket: String?
-        var runtimeVersion: String?
+        public var executablePath: String?
+        public var identifier: String?
+        public var format: String?
+        public var codeDirectory: String?
+        public var timestamp: String?
+        public var authorities: [String]?
+        public var teamIdentifier: String?
+        public var notarizationTicket: String?
+        public var runtimeVersion: String?
 
-        var isAppStore: Bool {
+        public var isAppStore: Bool {
             guard let authorities = authorities else { return false }
             // Check if the app is signed by Apple
             guard Set(authorities) == ["Apple Mac OS Application Signing", "Apple Worldwide Developer Relations Certification Authority", "Apple Root CA"] else {
@@ -110,7 +110,7 @@ public extension CodesignUtils {
             return true
         }
 
-        var vendorInCodeSign: String? {
+        public var vendorInCodeSign: String? {
             guard let authorities = authorities,
                   !authorities.isEmpty
             else {
