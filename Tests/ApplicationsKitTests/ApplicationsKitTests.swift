@@ -58,14 +58,6 @@ final class ApplicationsKitTests: XCTestCase {
     func testSystemApplications() {
         // When
         let applications = ApplicationsKit.systemApplications()
-        
-        let sysApp = applications.filter {
-            let codeSign = try? CodesignUtils.checkCodeSign(at: $0.path)
-            guard let codeSign, let authorities = codeSign.authorities else {
-                return false
-            }
-            return Set(authorities) == ["Software Signing", "Apple Code Signing Certification Authority", "Apple Root CA"]
-        }
 
         // Then
         XCTAssertFalse(applications.isEmpty, "System applications list should not be empty")
@@ -107,7 +99,7 @@ final class ApplicationsKitTests: XCTestCase {
 
     func testProcessStatus() {
         // When
-        let processes = ProcessStatus.all()
+        let processes = ProcessStatus.allProcess()
 
         // Then
         XCTAssertFalse(processes.isEmpty, "Process list should not be empty")
@@ -227,7 +219,7 @@ final class ApplicationsKitTests: XCTestCase {
 
     func testPerformanceOfProcessStatus() {
         measure {
-            _ = ProcessStatus.all()
+            _ = ProcessStatus.allProcess()
         }
     }
 
@@ -309,5 +301,21 @@ extension ApplicationsKitTests {
         let appStoreVendor = "Ian Page"
         let signVendor = await mactracker?.vendor
         XCTAssertEqual(signVendor, appStoreVendor, "Sign vendor should be \(appStoreVendor)")
+    }
+
+    func testAllAppCodeSign() async throws {
+        let applications = ApplicationsKit.systemApplications()
+        for application in applications {
+            let codeSign = application.codeSignInfo
+            guard let codeSign else {
+                debugPrint("Code sign info should not be nil")
+                continue
+            }
+            let vendor = await application.vendor
+            guard let vendor else {
+                debugPrint("Vendor of \(application.appName) is nil")
+                continue
+            }
+        }
     }
 }

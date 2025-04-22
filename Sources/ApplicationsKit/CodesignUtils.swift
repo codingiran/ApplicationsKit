@@ -7,6 +7,8 @@
 
 import Foundation
 
+#if os(macOS)
+
 struct CodesignUtils: Sendable {
     static func checkCodeSign(at url: URL) throws -> CodesignUtils.CodeSignInfo {
         guard FileManager.default.fileExists(at: url) else {
@@ -103,7 +105,7 @@ extension CodesignUtils {
             }
             return true
         }
-        
+
         init(output: String) {
             let lines = output.split(separator: "\n")
             for line in lines {
@@ -139,3 +141,5 @@ extension CodesignUtils {
         }
     }
 }
+
+#endif

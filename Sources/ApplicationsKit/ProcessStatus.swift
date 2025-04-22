@@ -9,88 +9,150 @@ import Foundation
 
 #if os(macOS)
 
-    public struct ProcessStatus: Codable, Sendable {
+    public struct ProcessStatus {
+        /// The process ID of the process.
         public let pid: Int32
-        public let uid: Int16
+        /// The process group ID of the process.
+        public let pgid: Int32
+        /// The user ID of the process owner.
+        public let uid: UInt32
+        /// The user name of the process owner.
         public let user: String
+        /// The name of the process.
         public let name: String
+        /// The command line used to launch the process.
         public let command: String
+        /// The date when the process started.
+        public let startDate: Date
+        /// The elapsed time since the process started.
+        public let elapsedTime: TimeInterval
 
-        public init(pid: Int32, uid: Int16, user: String, name: String, command: String) {
+        public init(pid: Int32,
+                    pgid: Int32,
+                    uid: UInt32,
+                    user: String,
+                    name: String,
+                    command: String,
+                    startDate: Date,
+                    elapsedTime: TimeInterval)
+        {
             self.pid = pid
+            self.pgid = pgid
             self.uid = uid
             self.user = user
             self.name = name
             self.command = command
-        }
-
-        public init(pid: Int32, uid: Int16, user: String, command: String) {
-            let commandURL = URL(fileURLPath: command)
-            let name = commandURL.lastPathComponent
-            self.init(pid: pid, uid: uid, user: user, name: name, command: command)
-        }
-
-        fileprivate init?(line: String) {
-            guard !line.isEmpty else {
-                return nil
-            }
-            let components = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            guard components.count == 4,
-                  let pidStr = components[safeIndex: 0],
-                  let pid = Int32(pidStr),
-                  let uidStr = components[safeIndex: 1],
-                  let uid = Int16(uidStr),
-                  let user = components[safeIndex: 2],
-                  let command = components[safeIndex: 3]
-            else {
-                return nil
-            }
-            self.init(pid: pid, uid: uid, user: user, command: command)
+            self.startDate = startDate
+            self.elapsedTime = elapsedTime
         }
     }
 
-    extension ProcessStatus: Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+    public extension ProcessStatus {
+        static func allProcess() -> [ProcessStatus] {
+            let maxProcesses = 4096
+            let pidSize = MemoryLayout<pid_t>.size
+            let pids = UnsafeMutablePointer<pid_t>.allocate(capacity: maxProcesses)
+            defer { pids.deallocate() }
+
+            let numberOfPids = proc_listallpids(pids, Int32(maxProcesses * pidSize))
+            if numberOfPids <= 0 {
+                return []
+            }
+
+            var processes = [ProcessStatus]()
+            let now = Date()
+            for i in 0 ..< numberOfPids {
+                let pid = pids[Int(i)]
+                let pgid = getpgid(pid)
+
+                var info = proc_taskallinfo()
+                let size = MemoryLayout<proc_taskallinfo>.stride
+
+                let ret = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &info, Int32(size))
+                if ret != size {
+                    continue
+                }
+
+                let uid = info.pbsd.pbi_uid
+                let startSec = info.pbsd.pbi_start_tvsec
+                let launchDate = Date(timeIntervalSince1970: TimeInterval(startSec))
+                let runningTime = now.timeIntervalSince(launchDate)
+
+                let name = withUnsafePointer(to: info.pbsd.pbi_name) {
+                    $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXLOGNAME)) {
+                        String(cString: $0)
+                    }
+                }
+                let executablePath = {
+                    var pathBuffer = [CChar](repeating: 0, count: Int(PROC_PIDPATHINFO_MAXSIZE))
+                    let result = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
+                    guard result > 0, let path = String(utf8String: pathBuffer), !path.isEmpty else {
+                        return ""
+                    }
+                    return path
+                }()
+                let user = {
+                    guard let pw = getpwuid(uid), let nameCStr = pw.pointee.pw_name else {
+                        return ""
+                    }
+                    return String(cString: nameCStr)
+                }()
+                let process = ProcessStatus(pid: pid, pgid: pgid, uid: uid, user: user, name: name, command: executablePath, startDate: launchDate, elapsedTime: runningTime)
+                processes.append(process)
+            }
+            return processes
+        }
+    }
+
+    extension ProcessStatus: Codable, Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
         public static func == (lhs: ProcessStatus, rhs: ProcessStatus) -> Bool {
             return
                 lhs.pid == rhs.pid &&
+                lhs.pgid == rhs.pgid &&
                 lhs.uid == rhs.uid &&
                 lhs.user == rhs.user &&
-                lhs.command == rhs.command
+                lhs.name == rhs.name &&
+                lhs.command == rhs.command &&
+                lhs.startDate == rhs.startDate &&
+                lhs.elapsedTime == rhs.elapsedTime
         }
 
         public var description: String {
-            "ProcessStatus(pid: \(pid), uid: \(uid), user: \(user), name: \(name), command: \(command))"
+            "ProcessStatus(pid: \(pid), pgid: \(pgid), uid: \(uid), user: \(user), name: \(name), command: \(command), startDate: \(startDate), elapsedTime: \(elapsedTime))"
         }
 
         public var debugDescription: String { description }
     }
 
-    public extension ProcessStatus {
-        static func all() -> [ProcessStatus] {
-            let process = Process(launchPath: "/bin/ps", arguments: ["-A", "-o", "pid=,uid=,user=,comm="])
+    private extension ProcessStatus {
+        static let PROC_PIDPATHINFO_MAXSIZE = 4 * UInt32(MAXPATHLEN)
+    }
+
+    private extension pid_t {
+        func ps(keyword: String) -> String? {
+            let process = Process(launchPath: "/bin/ps", arguments: ["-p", "\(self)", "-o", "\(keyword)="])
             let pipe = Pipe()
             process.standardOutput = pipe
             do {
                 try process.run()
             } catch {
-                return []
+                return nil
             }
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let output = String(data: data, encoding: .utf8) else {
-                return []
+            process.waitUntilExit()
+            guard process.terminationStatus == 0,
+                  let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+            else {
+                return nil
             }
-            return .init(ps: output)
+            return output
         }
-    }
 
-    private extension Array where Element == ProcessStatus {
-        init(ps output: String) {
-            guard !output.isEmpty else {
-                self = []
-                return
-            }
-            let lines = output.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-            self = lines.compactMap { ProcessStatus(line: $0) }
+        var psComm: String? {
+            ps(keyword: "comm")
+        }
+
+        var psUser: String? {
+            ps(keyword: "user")
         }
     }
 

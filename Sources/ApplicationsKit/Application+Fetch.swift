@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftyCache
 
 // MARK: - Fetch Error
 
@@ -45,96 +46,96 @@ extension Application {
 
 #if os(macOS)
 
-    // MARK: - Fetch from Metadata
+// MARK: - Fetch from Metadata
 
-    extension Application {
-        static func getAppInfo(fromMetadata metadata: MDLSMetadata, at url: URL) throws -> Application {
-            // Extract metadata attributes for known fields
-            let appName = {
-                // use displayName if available, otherwise use fsName
-                if let displayName = metadata.displayName?.replacingOccurrences(of: ".app", with: "").capitalizingFirstLetter(),
-                   !displayName.isEmpty
-                {
-                    return displayName
-                }
-                return metadata.fsName ?? url.lastPathComponent
-            }()
-
-            let bundleIdentifier = metadata.bundleIdentifier
-
-            // Some apps don't have a version, so we use an empty string as a fallback
-            // etc. Old version Electron apps
-            let appVersion = metadata.version ?? ""
-
-            // Some apps may not have valid size
-            // etc. SF Symbols
-            let bundleSize = metadata.logicalSize ?? metadata.physicalSize ?? 0
-
-            guard !appName.isEmpty else {
-                throw Application.FetcherError.appNameNotFound(url)
+extension Application {
+    static func getAppInfo(fromMetadata metadata: MDLSMetadata, at url: URL) throws -> Application {
+        // Extract metadata attributes for known fields
+        let appName = {
+            // use displayName if available, otherwise use fsName
+            if let displayName = metadata.displayName?.replacingOccurrences(of: ".app", with: "").capitalizingFirstLetter(),
+               !displayName.isEmpty
+            {
+                return displayName
             }
-            guard let bundleIdentifier, !bundleIdentifier.isEmpty else {
-                throw Application.FetcherError.appBundleIdentifierNotFound(url)
-            }
+            return metadata.fsName ?? url.lastPathComponent
+        }()
 
-            // Extract optional date fields
-            let creationDate = metadata.fsCreationDate
-            let contentChangeDate = metadata.fsContentChangeDate
-            let lastUsedDate = metadata.lastUsedDate
+        let bundleIdentifier = metadata.bundleIdentifier
 
-            // Determine architecture type
-            let arch = determineArchitecture(from: metadata)
+        // Some apps don't have a version, so we use an empty string as a fallback
+        // etc. Old version Electron apps
+        let appVersion = metadata.version ?? ""
 
-            // Use similar helper functions as `AppInfoFetcher` for attributes not found in metadata
-            let isWrapped = isDirectoryWrapped(path: url)
-            let isWebApp = isWebApp(appPath: url)
-            let isGlobal = !url.filePath.contains(NSHomeDirectory())
+        // Some apps may not have valid size
+        // etc. SF Symbols
+        let bundleSize = metadata.logicalSize ?? metadata.physicalSize ?? 0
 
-            // Copyright and App Store category are not available in metadata
-            let copyright = metadata.copyright
-            let appStoreCategory = metadata.appStoreCategory
-            let appStoreCategoryType = metadata.appStoreCategoryType
-
-            return Application(path: url,
-                               bundleIdentifier: bundleIdentifier,
-                               appName: appName,
-                               appVersion: appVersion,
-                               isWebApp: isWebApp,
-                               isWrapped: isWrapped,
-                               isGlobal: isGlobal,
-                               isFromMetadata: true,
-                               arch: arch,
-                               bundleSize: bundleSize,
-                               creationDate: creationDate,
-                               contentChangeDate: contentChangeDate,
-                               lastUsedDate: lastUsedDate,
-                               copyright: copyright,
-                               appStoreCategory: appStoreCategory,
-                               appStoreCategoryType: appStoreCategoryType)
+        guard !appName.isEmpty else {
+            throw Application.FetcherError.appNameNotFound(url)
+        }
+        guard let bundleIdentifier, !bundleIdentifier.isEmpty else {
+            throw Application.FetcherError.appBundleIdentifierNotFound(url)
         }
 
-        /// Determine the architecture type based on metadata
-        static func determineArchitecture(from metadata: MDLSMetadata) -> Application.Arch {
-            guard let architectures = metadata.executableArchitectures else {
-                return .empty
-            }
+        // Extract optional date fields
+        let creationDate = metadata.fsCreationDate
+        let contentChangeDate = metadata.fsContentChangeDate
+        let lastUsedDate = metadata.lastUsedDate
 
-            // Check for ARM and Intel presence
-            let containsArm = architectures.contains("arm64")
-            let containsIntel = architectures.contains("x86_64")
+        // Determine architecture type
+        let arch = determineArchitecture(from: metadata)
 
-            // Determine the Arch type based on available architectures
-            if containsArm && containsIntel {
-                return .universal
-            } else if containsArm {
-                return .arm
-            } else if containsIntel {
-                return .intel
-            } else {
-                return .empty
-            }
+        // Use similar helper functions as `AppInfoFetcher` for attributes not found in metadata
+        let isWrapped = isDirectoryWrapped(path: url)
+        let isWebApp = isWebApp(appPath: url)
+        let isGlobal = !url.filePath.contains(NSHomeDirectory())
+
+        // Copyright and App Store category are not available in metadata
+        let copyright = metadata.copyright
+        let appStoreCategory = metadata.appStoreCategory
+        let appStoreCategoryType = metadata.appStoreCategoryType
+
+        return Application(path: url,
+                           bundleIdentifier: bundleIdentifier,
+                           appName: appName,
+                           appVersion: appVersion,
+                           isWebApp: isWebApp,
+                           isWrapped: isWrapped,
+                           isGlobal: isGlobal,
+                           isFromMetadata: true,
+                           arch: arch,
+                           bundleSize: bundleSize,
+                           creationDate: creationDate,
+                           contentChangeDate: contentChangeDate,
+                           lastUsedDate: lastUsedDate,
+                           copyright: copyright,
+                           appStoreCategory: appStoreCategory,
+                           appStoreCategoryType: appStoreCategoryType)
+    }
+
+    /// Determine the architecture type based on metadata
+    static func determineArchitecture(from metadata: MDLSMetadata) -> Application.Arch {
+        guard let architectures = metadata.executableArchitectures else {
+            return .empty
+        }
+
+        // Check for ARM and Intel presence
+        let containsArm = architectures.contains("arm64")
+        let containsIntel = architectures.contains("x86_64")
+
+        // Determine the Arch type based on available architectures
+        if containsArm && containsIntel {
+            return .universal
+        } else if containsArm {
+            return .arm
+        } else if containsIntel {
+            return .intel
+        } else {
+            return .empty
         }
     }
+}
 
 #endif
 
@@ -204,6 +205,8 @@ extension Application {
     }
 }
 
+// MARK: - Detect Web App
+
 extension Application {
     /// Determines if the app is a web application by directly reading its `Info.plist` using the app path.
     static func isWebApp(appPath: URL) -> Bool {
@@ -218,6 +221,10 @@ extension Application {
             (infoDict["CFBundleExecutable"] as? String == "app_mode_loader")
     }
 }
+
+#if os(macOS)
+
+// MARK: Fetch Seller Name
 
 extension Application {
     var codeSignInfo: CodesignUtils.CodeSignInfo? {
@@ -242,27 +249,61 @@ extension Application {
             {
                 return String(authority[nameRange])
             }
+            // Get `xxxxx@gmail.com (RL***2Y)` in `Apple Development: xxxxx@gmail.com (RL***2Y)`
+            if let authority = authorities.first(where: { $0.hasPrefix(Application.appleDevelopmentPrefix) }) {
+                let developer = authority.replacingOccurrences(of: Application.appleDevelopmentPrefix, with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if !developer.isEmpty {
+                    return developer
+                }
+            }
             if Set(authorities) == ["Software Signing", "Apple Code Signing Certification Authority", "Apple Root CA"] {
                 return "Apple Inc."
             }
             if codeSign.isAppStore,
-               let sellerName = await fetchAppSellerNameFromAppStore(by: bundleIdentifier),
+               let sellerName = await fetchAppSellerName(by: bundleIdentifier),
                !sellerName.isEmpty
             {
                 return sellerName
+            }
+            if let authority = authorities.first, !authority.isEmpty {
+                return authority
             }
             return nil
         }
     }
 
-    static let pattern = #"Developer ID Application:\s+(.+?)\s+\([A-Z0-9]+\)"#
+    private static let pattern = #"Developer ID Application:\s+(.+?)\s+\([A-Z0-9]+\)"#
 
-    func fetchAppSellerNameFromAppStore(by bundleId: String) async -> String? {
+    private static let appleDevelopmentPrefix = "Apple Development:"
+}
+
+// MARK: Fetch Seller Name from App Store
+
+extension Application {
+    private static let vendorCache = SwiftyCache<String, String>(countLimit: 20, clearOnMemoryPressure: true)
+
+    private func fetchAppSellerName(by bundleId: String) async -> String? {
+        if let cachedSellerName = await Application.vendorCache.value(forKey: bundleId),
+           !cachedSellerName.isEmpty
+        {
+            return cachedSellerName
+        }
+        guard let sellerName = await fetchAppSellerNameFromAppStore(by: bundleId),
+              !sellerName.isEmpty
+        else {
+            return nil
+        }
+        await Application.vendorCache.setValue(sellerName, forKey: bundleId)
+        return sellerName
+    }
+
+    private func fetchAppSellerNameFromAppStore(by bundleId: String) async -> String? {
         let urlStr = "https://itunes.apple.com/lookup?bundleId=\(bundleId)"
         guard let url = URL(string: urlStr) else {
             return nil
         }
-        let response = try? await URLSession.shared.data(for: URLRequest(url: url))
+        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 5)
+        let response = try? await URLSession.shared.data(for: request)
         guard let data = response?.0 else {
             return nil
         }
@@ -270,10 +311,13 @@ extension Application {
         guard let dict = json as? [String: Any],
               let results = dict["results"] as? [[String: Any]],
               let firstResult = results.first,
-              let artistName = firstResult["sellerName"] as? String
+              let sellerName = firstResult["sellerName"] as? String,
+              !sellerName.isEmpty
         else {
             return nil
         }
-        return artistName
+        return sellerName
     }
 }
+
+#endif

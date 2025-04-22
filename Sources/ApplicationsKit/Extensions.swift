@@ -109,7 +109,15 @@ extension Array {
     }
 }
 
-#if canImport(AppKit)
+extension DateFormatter {
+    convenience init(locale: Locale, dateFormat: String) {
+        self.init()
+        self.locale = locale
+        self.dateFormat = dateFormat
+    }
+}
+
+#if os(macOS)
 
     import AppKit
 
