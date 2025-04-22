@@ -189,7 +189,7 @@ final class ApplicationsKitTests: XCTestCase {
         let systemApps = ApplicationsKit.systemApplications()
 
         let risky = systemApps.filter { app in
-            let result = app.checkCodeSign()
+            let result = app.checkRiskyCodeSign()
             switch result {
             case .success:
                 return false
@@ -256,63 +256,66 @@ extension ApplicationsKitTests {
     func testXcodeCodeSign() async throws {
         let xcode = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Xcode.app"))
         XCTAssertNotNil(xcode, "Xcode application should not be nil")
-        let codeSign = xcode?.codeSignInfo
+        let codeSign = try? xcode?.codeSign()
         XCTAssertNotNil(codeSign, "Code sign info should not be nil")
         let xcodeVendor = "Apple Inc."
-        let signVendor = await xcode?.vendor
+        let signVendor = xcode?.fetchSellerNameInCodeSign(codeSign)
         XCTAssertEqual(signVendor, xcodeVendor, "Sign vendor should be \(xcodeVendor)")
     }
 
     func testVSCodeCodeSign() async throws {
         let vsCode = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Visual Studio Code.app"))
         XCTAssertNotNil(vsCode, "VSCode application should not be nil")
-        let codeSign = vsCode?.codeSignInfo
+        let codeSign = try? vsCode?.codeSign()
         XCTAssertNotNil(codeSign, "Code sign info should not be nil")
         let vsCodeVendor = "Microsoft Corporation"
-        let signVendor = await vsCode?.vendor
+        let signVendor = vsCode?.fetchSellerNameInCodeSign(codeSign)
         XCTAssertEqual(signVendor, vsCodeVendor, "Sign vendor should be \(vsCodeVendor)")
     }
 
     func testTelegramCodeSign() async throws {
         let telegram = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Telegram.app"))
         XCTAssertNotNil(telegram, "Telegram application should not be nil")
-        let codeSign = telegram?.codeSignInfo
+        let codeSign = try? telegram?.codeSign()
         XCTAssertNotNil(codeSign, "Code sign info should not be nil")
         let telegramVendor = "TELEGRAM MESSENGER LLP"
-        let signVendor = await telegram?.vendor
+        let signVendor = telegram?.fetchSellerNameInCodeSign(codeSign)
         XCTAssertEqual(signVendor, telegramVendor, "Sign vendor should be \(telegramVendor)")
     }
 
     func testQQCodeSign() async throws {
         let qq = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/QQ.app"))
         XCTAssertNotNil(qq, "QQ application should not be nil")
-        let codeSign = qq?.codeSignInfo
+        let codeSign = try? qq?.codeSign()
         XCTAssertNotNil(codeSign, "Code sign info should not be nil")
         let qqVendor = "Tencent Technology (Shanghai) Co., Ltd"
-        let signVendor = await qq?.vendor
+        let signVendor = qq?.fetchSellerNameInCodeSign(codeSign)
         XCTAssertEqual(signVendor, qqVendor, "Sign vendor should be \(qqVendor)")
     }
 
     func testMacAppStoreAppCodeSign() async throws {
         let mactracker = ApplicationsKit.application(of: URL(fileURLWithPath: "/Applications/Mactracker.app"))
         XCTAssertNotNil(mactracker, "Mactracker application should not be nil")
-        let codeSign = mactracker?.codeSignInfo
+        let codeSign = try? mactracker?.codeSign()
         XCTAssertNotNil(codeSign, "Code sign info should not be nil")
         let appStoreVendor = "Ian Page"
-        let signVendor = await mactracker?.vendor
+        let signVendor = await mactracker?.fetchAppSellerName()
         XCTAssertEqual(signVendor, appStoreVendor, "Sign vendor should be \(appStoreVendor)")
     }
 
     func testAllAppCodeSign() async throws {
         let applications = ApplicationsKit.systemApplications()
         for application in applications {
-            let codeSign = application.codeSignInfo
+            let codeSign = try? application.codeSign()
             guard let codeSign else {
                 debugPrint("Code sign info should not be nil")
                 continue
             }
-            let vendor = await application.vendor
-            guard let vendor else {
+            var vendor = application.fetchSellerNameInCodeSign(codeSign)
+            if vendor == nil {
+                vendor = await application.fetchAppSellerName()
+            }
+            if let vendor {
                 debugPrint("Vendor of \(application.appName) is nil")
                 continue
             }
