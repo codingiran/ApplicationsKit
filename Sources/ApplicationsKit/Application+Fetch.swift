@@ -226,7 +226,7 @@ extension Application {
 
 // MARK: Fetch Seller Name
 
-extension Application {
+public extension Application {
     func fetchSellerNameInCodeSign(_ codeSign: CodesignUtils.CodeSignInfo? = nil) -> String? {
         guard let codeSign = try? codeSign ?? self.codeSign() else {
             return nil
@@ -237,21 +237,21 @@ extension Application {
 
 // MARK: Fetch Seller Name from App Store
 
-extension Application {
+public extension Application {
     private static let vendorCache = SwiftyCache<String, String>(countLimit: 20, clearOnMemoryPressure: true)
 
-    private func fetchAppSellerName(by bundleId: String) async -> String? {
-        if let cachedSellerName = await Application.vendorCache.value(forKey: bundleId),
+    func fetchAppSellerName() async -> String? {
+        if let cachedSellerName = await Application.vendorCache.value(forKey: bundleIdentifier),
            !cachedSellerName.isEmpty
         {
             return cachedSellerName
         }
-        guard let sellerName = await fetchAppSellerNameFromAppStore(by: bundleId),
+        guard let sellerName = await fetchAppSellerNameFromAppStore(by: bundleIdentifier),
               !sellerName.isEmpty
         else {
             return nil
         }
-        await Application.vendorCache.setValue(sellerName, forKey: bundleId)
+        await Application.vendorCache.setValue(sellerName, forKey: bundleIdentifier)
         return sellerName
     }
 
