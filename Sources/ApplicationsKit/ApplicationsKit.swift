@@ -32,7 +32,7 @@ public extension ApplicationsKit {
         }
     }
 
-    /// The user applications directory.
+    /// The current user applications directory.
     static var userApplicationsDirectory: URL {
         do {
             return try FileManager.default.url(for: .applicationDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -45,14 +45,32 @@ public extension ApplicationsKit {
         }
     }
 
+    /// The applications directory for the specified user.
+    static func applicationsDirectoryForUser(_ userName: String) -> URL {
+        var homeDirectory: URL?
+        if #available(macOS 13.0, macCatalyst 16.0, *) {
+            homeDirectory = URL.homeDirectory(forUser: userName)
+        } else {
+            if let homeDirectoryPath = NSHomeDirectoryForUser(userName) {
+                homeDirectory = URL(fileURLPath: homeDirectoryPath)
+            }
+        }
+        return (homeDirectory ?? URL(fileURLPath: "/Users/\(userName)")).appendingPath("Applications")
+    }
+
     /// The system applications.
     static func systemApplications() -> [Application] {
         return applications(at: systemApplicationsDirectory)
     }
 
-    /// The user applications.
+    /// The current user applications.
     static func userApplications() -> [Application] {
         return applications(at: userApplicationsDirectory)
+    }
+
+    /// The applications for the specified user.
+    static func applicationsForUser(_ userName: String) -> [Application] {
+        return applications(at: applicationsDirectoryForUser(userName))
     }
 
     /// The applications at the specified directory.
