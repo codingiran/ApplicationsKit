@@ -46,7 +46,7 @@ public extension ApplicationsKit {
     }
 
     /// The applications directory for the specified user.
-    static func applicationsDirectoryForUser(_ userName: String) -> URL {
+    static func applicationsDirectoryForUser(_ userName: String) -> URL? {
         var homeDirectory: URL?
         if #available(macOS 13.0, macCatalyst 16.0, *) {
             homeDirectory = URL.homeDirectory(forUser: userName)
@@ -55,7 +55,10 @@ public extension ApplicationsKit {
                 homeDirectory = URL(fileURLPath: homeDirectoryPath)
             }
         }
-        return (homeDirectory ?? URL(fileURLPath: "/Users/\(userName)")).appendingPath("Applications")
+        guard let homeDirectory else {
+            return nil
+        }
+        return homeDirectory.appendingPath("Applications")
     }
 
     /// The system applications.
@@ -70,7 +73,10 @@ public extension ApplicationsKit {
 
     /// The applications for the specified user.
     static func applicationsForUser(_ userName: String) -> [Application] {
-        return applications(at: applicationsDirectoryForUser(userName))
+        guard let homeDirectory = applicationsDirectoryForUser(userName) else {
+            return []
+        }
+        return applications(at: homeDirectory)
     }
 
     /// The applications at the specified directory.
