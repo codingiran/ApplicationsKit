@@ -9,7 +9,7 @@ import AppKit
 import Foundation
 
 /// A struct that represents an application.
-public struct Application: Codable, Identifiable, Equatable, Hashable, Sendable {
+public struct Application: Codable, Identifiable, Sendable {
     /// The unique identifier for the application.
     public var id = UUID().uuidString
 

@@ -299,7 +299,7 @@ extension ApplicationsKitTests {
         let codeSign = try? mactracker?.codeSign()
         XCTAssertNotNil(codeSign, "Code sign info should not be nil")
         let appStoreVendor = "Ian Page"
-        let signVendor = await mactracker?.fetchAppSellerName()
+        let signVendor = await mactracker?.fetchAppSellerNameFromAppStore()
         XCTAssertEqual(signVendor, appStoreVendor, "Sign vendor should be \(appStoreVendor)")
     }
 
@@ -313,9 +313,9 @@ extension ApplicationsKitTests {
             }
             var vendor = application.fetchSellerNameInCodeSign(codeSign)
             if vendor == nil {
-                vendor = await application.fetchAppSellerName()
+                vendor = await application.fetchAppSellerNameFromAppStore()
             }
-            if let vendor {
+            guard let vendor else {
                 debugPrint("Vendor of \(application.appName) is nil")
                 continue
             }

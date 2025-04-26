@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftyCache
 
 // MARK: - Fetch Error
 
@@ -238,21 +237,8 @@ public extension Application {
 // MARK: Fetch Seller Name from App Store
 
 public extension Application {
-    private static let vendorCache = SwiftyCache<String, String>(countLimit: 20, clearOnMemoryPressure: true)
-
-    func fetchAppSellerName() async -> String? {
-        if let cachedSellerName = await Application.vendorCache.value(forKey: bundleIdentifier),
-           !cachedSellerName.isEmpty
-        {
-            return cachedSellerName
-        }
-        guard let sellerName = await fetchAppSellerNameFromAppStore(by: bundleIdentifier),
-              !sellerName.isEmpty
-        else {
-            return nil
-        }
-        await Application.vendorCache.setValue(sellerName, forKey: bundleIdentifier)
-        return sellerName
+    func fetchAppSellerNameFromAppStore() async -> String? {
+        await fetchAppSellerNameFromAppStore(by: bundleIdentifier)
     }
 
     private func fetchAppSellerNameFromAppStore(by bundleId: String) async -> String? {
