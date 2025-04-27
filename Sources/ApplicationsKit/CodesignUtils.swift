@@ -90,7 +90,7 @@ public extension CodesignUtils {
      Sealed Resources version=2 rules=13 files=2184
      Internal requirements count=1 size=180
      */
-    struct CodeSignInfo: Sendable {
+    struct CodeSignInfo: Codable, Sendable {
         public var executablePath: String?
         public var identifier: String?
         public var format: String?
