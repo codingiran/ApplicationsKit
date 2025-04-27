@@ -87,13 +87,13 @@ import Foundation
                     var pathBuffer = [CChar](repeating: 0, count: Int(PROC_PIDPATHINFO_MAXSIZE))
                     let result = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
                     guard result > 0, let path = String(utf8String: pathBuffer), !path.isEmpty else {
-                        return ""
+                        return pid.psComm ?? ""
                     }
                     return path
                 }()
                 let user = {
                     guard let pw = getpwuid(uid), let nameCStr = pw.pointee.pw_name else {
-                        return ""
+                        return pid.psUser ?? ""
                     }
                     return String(cString: nameCStr)
                 }()
