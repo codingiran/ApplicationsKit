@@ -237,12 +237,12 @@ public extension Application {
 // MARK: Fetch Seller Name from App Store
 
 public extension Application {
-    func fetchAppSellerNameFromAppStore() async -> String? {
-        await fetchAppSellerNameFromAppStore(by: bundleIdentifier)
+    func fetchAppSellerNameFromAppStore(countryCode: String = "us") async -> String? {
+        await fetchAppSellerNameFromAppStore(by: bundleIdentifier, countryCode: countryCode)
     }
 
-    private func fetchAppSellerNameFromAppStore(by bundleId: String) async -> String? {
-        let urlStr = "https://itunes.apple.com/lookup?bundleId=\(bundleId)"
+    private func fetchAppSellerNameFromAppStore(by bundleId: String, countryCode: String) async -> String? {
+        let urlStr = "https://itunes.apple.com/lookup?bundleId=\(bundleId)&country=\(countryCode)"
         guard let url = URL(string: urlStr) else {
             return nil
         }
