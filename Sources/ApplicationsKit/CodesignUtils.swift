@@ -10,11 +10,11 @@ import Foundation
 #if os(macOS)
 
 public struct CodesignUtils: Sendable {
-    static func checkApplicationCodeSign(_ application: Application) throws -> CodesignUtils.CodeSignInfo {
+    public static func checkApplicationCodeSign(_ application: Application) throws -> CodesignUtils.CodeSignInfo {
         try checkCodeSign(at: application.path)
     }
 
-    static func checkCodeSign(at url: URL) throws -> CodesignUtils.CodeSignInfo {
+    public static func checkCodeSign(at url: URL) throws -> CodesignUtils.CodeSignInfo {
         guard FileManager.default.fileExists(at: url) else {
             throw CodeSignError.invalidPath
         }
@@ -46,13 +46,13 @@ public struct CodesignUtils: Sendable {
     }
 }
 
-extension CodesignUtils {
+public extension CodesignUtils {
     enum CodeSignError: LocalizedError {
         case invalidPath
         case codeSignCommandFailed(Error)
         case invalidOutput(String?, Int32)
 
-        var errorDescription: String? {
+        public var errorDescription: String? {
             switch self {
             case .invalidPath:
                 return "The provided path is invalid or does not exist."
