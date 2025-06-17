@@ -1,13 +1,13 @@
 {
-  "originHash" : "fa13c555b43d8549bd884eff6ab04e424ff31a8edfe6eff4b05ff9f517bca0bc",
+  "originHash" : "4d242cea915684836ec5b941b9e07c37370cb00dc3350d46a459d6494d9cefbc",
   "pins" : [
     {
       "identity" : "swift-collections",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-collections.git",
       "state" : {
-        "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
-        "version" : "1.1.4"
+        "revision" : "c1805596154bb3a265fd91b8ac0c4433b4348fb0",
+        "version" : "1.2.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/codingiran/SwiftyCache.git",
       "state" : {
-        "revision" : "9ce810e248944dff221014386fb63b24b61afe68",
-        "version" : "1.0.1"
+        "revision" : "d973d247e18e4f6f51593116e7c17f7cfd299cf3",
+        "version" : "1.0.2"
       }
     }
   ],
