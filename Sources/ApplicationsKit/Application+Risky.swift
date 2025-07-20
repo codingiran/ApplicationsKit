@@ -27,7 +27,7 @@ import Foundation
                 }
                 let dangerousAuthority = authorities.first {
                     let lower = $0.lowercased()
-                    return lower.contains("tnt") || lower.contains("hciso") || lower.contains("ediso")
+                    return lower.contains("tnt") || lower.contains("hciso") || lower.contains("ediso") || lower.contains("aqzs")
                 }
                 if let dangerousAuthority, !dangerousAuthority.isEmpty {
                     return .failure(.dangerousAuthority(flag: String(dangerousAuthority)))
