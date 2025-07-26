@@ -14,8 +14,8 @@ import Foundation
 
 /// The `ApplicationsKit` provides a set of static methods for working with applications on macOS.
 public enum ApplicationsKit: Sendable {
-    /// Current ApplicationsKit version 0.0.4. Necessary since SPM doesn't use dynamic libraries. Plus this will be more accurate.
-    public static let version = "0.0.4"
+    /// Current ApplicationsKit version 0.0.5. Necessary since SPM doesn't use dynamic libraries. Plus this will be more accurate.
+    public static let version = "0.0.5"
 }
 
 public extension ApplicationsKit {

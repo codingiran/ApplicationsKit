@@ -19,7 +19,7 @@ final class ApplicationsKitTests: XCTestCase {
 
     func testApplicationsKitVersion() {
         // Given
-        let expectedVersion = "0.0.4"
+        let expectedVersion = "0.0.5"
 
         // When
         let actualVersion = ApplicationsKit.version
